@@ -4,6 +4,7 @@
   "private": false,
   "type": "module",
   "description": "The Open-Source Acoustic Design & Proposal Studio",
+  "packageManager": "bun@1.3.2",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
