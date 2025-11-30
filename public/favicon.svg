@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00ff88"/>
+      <stop offset="100%" style="stop-color:#00aaff"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="6" fill="#12121a"/>
+  <g fill="url(#gradient)">
+    <!-- Sound waves -->
+    <path d="M8 12 Q10 16 8 20" stroke="url(#gradient)" stroke-width="1.5" fill="none"/>
+    <path d="M12 10 Q15 16 12 22" stroke="url(#gradient)" stroke-width="1.5" fill="none"/>
+    <path d="M16 8 Q20 16 16 24" stroke="url(#gradient)" stroke-width="2" fill="none"/>
+    <path d="M20 10 Q23 16 20 22" stroke="url(#gradient)" stroke-width="1.5" fill="none"/>
+    <path d="M24 12 Q26 16 24 20" stroke="url(#gradient)" stroke-width="1.5" fill="none"/>
+  </g>
+</svg>

@@ -1,0 +1,146 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles */
+@layer base {
+  * {
+    @apply box-border;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply min-h-screen overflow-x-hidden;
+  }
+
+  /* Custom scrollbar for dark theme */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-audio-bg;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-audio-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-audio-muted;
+  }
+}
+
+/* Component styles */
+@layer components {
+  /* Blueprint grid background */
+  .blueprint-grid {
+    background-image:
+      linear-gradient(rgba(0, 170, 255, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 170, 255, 0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  /* Neon glow effects */
+  .glow-green {
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.3), 0 0 20px rgba(0, 255, 136, 0.2);
+  }
+
+  .glow-blue {
+    box-shadow: 0 0 10px rgba(0, 170, 255, 0.3), 0 0 20px rgba(0, 170, 255, 0.2);
+  }
+
+  .glow-orange {
+    box-shadow: 0 0 10px rgba(255, 136, 0, 0.3), 0 0 20px rgba(255, 136, 0, 0.2);
+  }
+
+  /* Panel styling */
+  .panel {
+    @apply bg-audio-panel border border-audio-border rounded-lg;
+  }
+
+  .panel-surface {
+    @apply bg-audio-surface border border-audio-border rounded-lg;
+  }
+
+  /* Input styling */
+  .input-field {
+    @apply w-full px-3 py-2 bg-audio-surface border border-audio-border rounded-md
+           text-audio-text placeholder-audio-muted
+           focus:outline-none focus:border-neon-green focus:ring-1 focus:ring-neon-green/30
+           transition-all duration-200;
+  }
+
+  /* Slider styling */
+  input[type="range"] {
+    @apply appearance-none w-full h-2 bg-audio-surface rounded-lg cursor-pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    @apply appearance-none w-4 h-4 bg-neon-green rounded-full cursor-pointer
+           shadow-[0_0_10px_rgba(0,255,136,0.5)];
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    @apply w-4 h-4 bg-neon-green rounded-full cursor-pointer border-0
+           shadow-[0_0_10px_rgba(0,255,136,0.5)];
+  }
+
+  /* Button styles */
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-audio-bg;
+  }
+
+  .btn-primary {
+    @apply btn bg-neon-green text-audio-bg hover:bg-neon-green/90
+           focus:ring-neon-green/50 glow-green;
+  }
+
+  .btn-secondary {
+    @apply btn bg-audio-surface border border-audio-border text-audio-text
+           hover:bg-audio-border hover:border-audio-muted
+           focus:ring-audio-muted/50;
+  }
+
+  .btn-icon {
+    @apply p-2 rounded-md text-audio-muted hover:text-audio-text
+           hover:bg-audio-surface transition-colors duration-200;
+  }
+
+  /* Accordion styling */
+  .accordion-trigger {
+    @apply w-full flex items-center justify-between p-3 text-left
+           hover:bg-audio-surface/50 transition-colors duration-200;
+  }
+
+  .accordion-content {
+    @apply overflow-hidden transition-all duration-300 ease-in-out;
+  }
+
+  /* Canvas container */
+  .canvas-container {
+    @apply relative bg-audio-bg border border-audio-border rounded-lg overflow-hidden;
+  }
+
+  /* Tooltip */
+  .tooltip {
+    @apply absolute z-50 px-2 py-1 text-xs font-mono bg-audio-panel
+           border border-audio-border rounded shadow-lg pointer-events-none;
+  }
+}
+
+/* Utility classes */
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-neon-green to-neon-blue bg-clip-text text-transparent;
+  }
+
+  .border-gradient {
+    border-image: linear-gradient(to right, #00ff88, #00aaff) 1;
+  }
+}
