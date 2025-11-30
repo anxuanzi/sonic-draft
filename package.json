@@ -1,7 +1,7 @@
 {
   "name": "sonic-draft",
   "version": "1.0.0",
-  "private": true,
+  "private": false,
   "type": "module",
   "description": "The Open-Source Acoustic Design & Proposal Studio",
   "scripts": {
