@@ -1,34 +1,43 @@
-# SonicDraft
+# SonicDraft 🎛️
 
-**The Open-Source Acoustic Design & Proposal Studio**
+The Open-Source Acoustic Design & Proposal Studio. Plan speaker deployments, simulate coverage, and draft professional
+audio proposals in seconds.
 
-SonicDraft is a browser-based acoustic simulation tool designed for audio engineers to plan PA system deployments. It allows you to simulate speaker coverage in varying room geometries, visualize SPL (Sound Pressure Level) hotspots, and generate professional PDF proposals with cost estimates.
+## 📖 About The Project
 
-## Features
+SonicDraft is a web-based acoustic simulation tool designed to help audio engineers, venue owners, and integrators
+visualize sound.
+
+Traditional acoustic modeling software is often expensive, complex, and overkill for small-to-mid-sized venue proposals.
+SonicDraft fills this gap by providing an intuitive, browser-based interface to design PA systems. It combines a robust
+physics engine with a "drafting" interface, allowing users to place speakers, check for coverage dead zones, and
+instantly export a client-ready PDF proposal with a Bill of Materials (BOM).
+
+## 🚀 Key Features
 
 - **Real-time Coverage Visualization**
-  - Top-down (bird's eye) view of horizontal coverage
-  - Side elevation view for vertical coverage analysis
-  - Interactive SPL probe - hover to see exact levels at any point
-  - Ceiling reflection warnings for acoustic issues
+    - Top-down (bird's eye) view of horizontal coverage
+    - Side elevation view for vertical coverage analysis
+    - Interactive SPL probe - hover to see exact levels at any point
+    - Ceiling reflection warnings for acoustic issues
 
 - **Comprehensive Speaker Library**
-  - Industry-standard systems (JBL, Meyer Sound, d&b, L-Acoustics, QSC, etc.)
-  - Line arrays, point source, and column speakers
-  - Compatible subwoofer recommendations
-  - Detailed specifications and pricing
+    - Industry-standard systems (JBL, Meyer Sound, d&b, L-Acoustics, QSC, etc.)
+    - Line arrays, point source, and column speakers
+    - Compatible subwoofer recommendations
+    - Detailed specifications and pricing
 
 - **Physics-Based Calculations**
-  - Inverse square law for point sources
-  - Cylindrical spreading for line arrays
-  - Off-axis attenuation modeling
-  - Array coupling coefficients
+    - Inverse square law for point sources
+    - Cylindrical spreading for line arrays
+    - Off-axis attenuation modeling
+    - Array coupling coefficients
 
 - **Professional PDF Export**
-  - Room specifications
-  - System configuration details
-  - Coverage map snapshots
-  - Bill of Materials with cost estimates
+    - Room specifications
+    - System configuration details
+    - Coverage map snapshots
+    - Bill of Materials with cost estimates
 
 ## Tech Stack
 
@@ -113,32 +122,77 @@ The speaker database is in `src/data/speakers/database.ts`. To add a new speaker
 ```typescript
 {
   id: 'brand-model',
-  brand: 'Brand Name',
-  model: 'Model Name',
-  type: SpeakerType.LineArray,
-  specs: {
+    brand
+:
+  'Brand Name',
+    model
+:
+  'Model Name',
+    type
+:
+  SpeakerType.LineArray,
+    specs
+:
+  {
     horzDispersion: 90,
-    vertDispersion: 15,
-    maxSPL: 135,
-    couplingCoefficient: 0.9,
-    frequencyRange: { low: 50, high: 20000 },
+      vertDispersion
+  :
+    15,
+      maxSPL
+  :
+    135,
+      couplingCoefficient
+  :
+    0.9,
+      frequencyRange
+  :
+    {
+      low: 50, high
+    :
+      20000
+    }
+  ,
     impedance: 8,
-    powerHandling: 1000,
-  },
+      powerHandling
+  :
+    1000,
+  }
+,
   pricing: {
     perUnit: 5000,
-    perSub: 4000,
-    currency: 'USD',
-  },
+      perSub
+  :
+    4000,
+      currency
+  :
+    'USD',
+  }
+,
   meta: {
     description: 'Description of the speaker...',
-    weight: 25,
-    dimensions: { width: 500, height: 300, depth: 400 },
+      weight
+  :
+    25,
+      dimensions
+  :
+    {
+      width: 500, height
+    :
+      300, depth
+    :
+      400
+    }
+  ,
     link: 'https://manufacturer.com/product',
-  },
+  }
+,
   compatibleSubs: ['brand-sub-model'],
-  arrayable: true,
-  maxArraySize: 12,
+    arrayable
+:
+  true,
+    maxArraySize
+:
+  12,
 }
 ```
 
@@ -153,24 +207,30 @@ The speaker database is in `src/data/speakers/database.ts`. To add a new speaker
 ## Physics Reference
 
 ### Inverse Square Law (Point Sources)
+
 ```
 SPL(d) = SPL(1m) - 20 × log₁₀(d)
 ```
+
 Sound pressure decreases by 6dB for every doubling of distance.
 
 ### Cylindrical Spreading (Line Arrays)
+
 ```
 SPL(d) = SPL(1m) - 10 × log₁₀(d)  [near field]
 SPL(d) = SPL(1m) - 20 × log₁₀(d)  [far field]
 ```
+
 Line arrays exhibit 3dB loss per doubling in the near field, transitioning to spherical spreading in the far field.
 
 ### Off-Axis Attenuation
+
 Coverage angles represent -6dB points. Beyond the coverage cone, attenuation increases more rapidly.
 
 ## Deployment
 
-The application is configured for GitHub Pages deployment via GitHub Actions. On push to the `main` branch, the workflow:
+The application is configured for GitHub Pages deployment via GitHub Actions. On push to the `main` branch, the
+workflow:
 
 1. Checks out the code
 2. Installs dependencies
