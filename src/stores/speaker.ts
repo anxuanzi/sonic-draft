@@ -13,10 +13,14 @@ import {
   type SpeakerDeployment,
   type CenterFillConfig,
   type DeploymentMode,
+  type SystemTypeId,
+  SystemTypeId as SystemTypeIds,
   getSpeakerById,
   getMainSpeakers,
   getCompatibleSubwoofers,
   getCenterFillSpeakers,
+  getSpeakersBySystemType,
+  getSystemTypeConfig,
 } from '@/data/speakers'
 import { useAcoustics } from '@/composables/useAcoustics'
 import { useRoomStore } from './room'
@@ -28,6 +32,9 @@ export const useSpeakerStore = defineStore('speaker', () => {
   // ============================================
   // State
   // ============================================
+
+  /** Currently selected system type */
+  const selectedSystemType = ref<SystemTypeId>(SystemTypeIds.LineArrayLR)
 
   /** Currently selected main speaker ID */
   const selectedSpeakerId = ref('jbl-vrx932lap')
@@ -77,8 +84,20 @@ export const useSpeakerStore = defineStore('speaker', () => {
     selectedSubId.value ? getSpeakerById(selectedSubId.value) : undefined
   )
 
-  /** Available main speakers for selection */
+  /** Available main speakers for selection (all, unfiltered) */
   const availableSpeakers = computed(() => getMainSpeakers())
+
+  /** Current system type configuration */
+  const systemTypeConfig = computed(() => getSystemTypeConfig(selectedSystemType.value))
+
+  /** Speakers filtered by current system type */
+  const filteredSpeakers = computed(() => getSpeakersBySystemType(selectedSystemType.value))
+
+  /** Unique brands from filtered speakers */
+  const filteredBrands = computed(() => {
+    const brands = new Set(filteredSpeakers.value.map((s) => s.brand))
+    return Array.from(brands).sort()
+  })
 
   /** Compatible subwoofers for selected main speaker */
   const compatibleSubwoofers = computed(() =>
@@ -287,6 +306,36 @@ export const useSpeakerStore = defineStore('speaker', () => {
   }
 
   /**
+   * Set the system type.
+   * This updates filtered speakers and applies sensible defaults.
+   */
+  function setSystemType(type: SystemTypeId) {
+    selectedSystemType.value = type
+    const config = getSystemTypeConfig(type)
+
+    // Apply default deployment mode
+    deploymentMode.value = config.defaultDeploymentMode
+
+    // Apply default quantity
+    quantity.value = config.defaultQuantity
+
+    // Apply default height
+    trimHeight.value = config.defaultHeight
+
+    // Select first available speaker of this system type
+    const speakers = getSpeakersBySystemType(type)
+    if (speakers.length > 0 && speakers[0]) {
+      selectSpeaker(speakers[0].id)
+    }
+
+    // Handle subs based on system type preference
+    if (!config.usesSubs) {
+      selectedSubId.value = undefined
+      subQuantity.value = 0
+    }
+  }
+
+  /**
    * Set the array spread (distance between L/R arrays).
    */
   function setArraySpread(value: number) {
@@ -327,6 +376,7 @@ export const useSpeakerStore = defineStore('speaker', () => {
    * Reset to default configuration.
    */
   function resetToDefaults() {
+    selectedSystemType.value = SystemTypeIds.LineArrayLR
     selectedSpeakerId.value = 'jbl-vrx932lap'
     quantity.value = 4
     selectedSubId.value = 'jbl-vrx918sp'
@@ -410,6 +460,7 @@ export const useSpeakerStore = defineStore('speaker', () => {
 
   return {
     // State
+    selectedSystemType,
     selectedSpeakerId,
     quantity,
     selectedSubId,
@@ -425,6 +476,9 @@ export const useSpeakerStore = defineStore('speaker', () => {
     selectedSpeaker,
     selectedSubwoofer,
     availableSpeakers,
+    systemTypeConfig,
+    filteredSpeakers,
+    filteredBrands,
     compatibleSubwoofers,
     availableCenterFillSpeakers,
     selectedCenterFillSpeaker,
@@ -450,6 +504,7 @@ export const useSpeakerStore = defineStore('speaker', () => {
     heightControlLabel,
 
     // Actions
+    setSystemType,
     selectSpeaker,
     selectSubwoofer,
     setQuantity,

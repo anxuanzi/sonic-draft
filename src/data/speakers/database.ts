@@ -6,7 +6,12 @@
  *   and add/edit items for that brand. The system will combine them automatically.
  */
 
-import { type SpeakerModel, SpeakerType } from './types'
+import {
+  type SpeakerModel,
+  type SystemTypeId,
+  SpeakerType,
+  getSystemTypeConfig,
+} from './types'
 
 // Import brand data (each is a simple array of speaker models)
 import jbl from './brands/jbl'
@@ -102,5 +107,18 @@ export function getUniqueBrands (): string[] {
 export function getCenterFillSpeakers (): SpeakerModel[] {
   return speakerDatabase.filter(
     (s) => s.type === SpeakerType.PointSource || s.type === SpeakerType.Column
+  )
+}
+
+/**
+ * Get speakers filtered by system type.
+ * Each system type specifies which speaker types are appropriate.
+ * @param systemTypeId - The system type to filter by
+ * @returns Array of speakers matching the system type requirements
+ */
+export function getSpeakersBySystemType (systemTypeId: SystemTypeId): SpeakerModel[] {
+  const config = getSystemTypeConfig(systemTypeId)
+  return speakerDatabase.filter(
+    (s) => config.speakerTypes.includes(s.type) && s.type !== SpeakerType.Subwoofer
   )
 }

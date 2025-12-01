@@ -29,6 +29,12 @@ export {
   type CenterFillConfig,
   type BOMItem,
   type BillOfMaterials,
+  // System type exports
+  SystemTypeId,
+  type SystemTypeConfig,
+  SystemTypeConfigs,
+  getSystemTypeConfig,
+  getAllSystemTypeConfigs,
 } from './types'
 
 // Database and utilities
@@ -42,4 +48,5 @@ export {
   getSpeakersByBrand,
   getUniqueBrands,
   getCenterFillSpeakers,
+  getSpeakersBySystemType,
 } from './database'

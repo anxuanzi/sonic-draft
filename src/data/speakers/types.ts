@@ -393,3 +393,132 @@ export interface BillOfMaterials {
    */
   generatedAt: Date
 }
+
+// ============================================
+// System Type Configuration
+// ============================================
+
+/**
+ * System type categories for speaker selection workflow.
+ * Each type represents a common PA deployment scenario.
+ */
+export const SystemTypeId = {
+  /** Point source speakers in L/R configuration - most common portable setup */
+  StereoPointSource: 'stereo_point_source',
+  /** Line array elements flown in L/R configuration - concert/touring systems */
+  LineArrayLR: 'line_array_lr',
+  /** Column speakers for speech/music - compact high-quality coverage */
+  ColumnArray: 'column_array',
+  /** Distributed ceiling/delay system - even coverage over large areas */
+  DistributedSystem: 'distributed_system',
+} as const
+
+export type SystemTypeId = (typeof SystemTypeId)[keyof typeof SystemTypeId]
+
+/**
+ * Configuration metadata for each system type.
+ * Used to drive UI, filtering, and default settings.
+ */
+export interface SystemTypeConfig {
+  /** Unique identifier */
+  id: SystemTypeId
+  /** Display name */
+  name: string
+  /** Short tagline */
+  tagline: string
+  /** Detailed description */
+  description: string
+  /** Icon identifier (Lucide icon name) */
+  icon: string
+  /** Speaker types to show in selection */
+  speakerTypes: SpeakerType[]
+  /** Default deployment mode */
+  defaultDeploymentMode: DeploymentMode
+  /** Whether this system type supports arraying */
+  supportsArraying: boolean
+  /** Typical use cases */
+  useCases: string[]
+  /** Default quantity of speakers */
+  defaultQuantity: number
+  /** Default trim/stand height */
+  defaultHeight: number
+  /** Whether subs are typically used */
+  usesSubs: boolean
+}
+
+/**
+ * Complete system type configurations.
+ * This drives the system type selector UI and speaker filtering.
+ */
+export const SystemTypeConfigs: Record<SystemTypeId, SystemTypeConfig> = {
+  [SystemTypeId.StereoPointSource]: {
+    id: SystemTypeId.StereoPointSource,
+    name: 'Point Source',
+    tagline: 'Standard L/R Setup',
+    description: 'Classic stereo setup with point source speakers on stands. Great for DJ events, bands, and small-medium venues.',
+    icon: 'Speaker',
+    speakerTypes: [SpeakerType.PointSource],
+    defaultDeploymentMode: 'L/R Stereo',
+    supportsArraying: false,
+    useCases: ['DJ Events', 'Live Bands', 'Small Venues', 'Corporate Events'],
+    defaultQuantity: 1,
+    defaultHeight: 2.0,
+    usesSubs: true,
+  },
+  [SystemTypeId.LineArrayLR]: {
+    id: SystemTypeId.LineArrayLR,
+    name: 'Line Array',
+    tagline: 'Narrow Vertical, Long Throw',
+    description: 'Flown line array system for maximum throw and SPL. Ideal for concerts, festivals, and large venues.',
+    icon: 'Layers',
+    speakerTypes: [SpeakerType.LineArray],
+    defaultDeploymentMode: 'L/R Stereo',
+    supportsArraying: true,
+    useCases: ['Concerts', 'Festivals', 'Large Venues', 'Touring'],
+    defaultQuantity: 4,
+    defaultHeight: 8.0,
+    usesSubs: true,
+  },
+  [SystemTypeId.ColumnArray]: {
+    id: SystemTypeId.ColumnArray,
+    name: 'Column Array',
+    tagline: 'Wide Horizontal, Compact',
+    description: 'Compact column speakers with controlled vertical coverage. Perfect for speech, corporate, and houses of worship.',
+    icon: 'PanelLeft',
+    speakerTypes: [SpeakerType.Column],
+    defaultDeploymentMode: 'L/R Stereo',
+    supportsArraying: false,
+    useCases: ['Corporate', 'Houses of Worship', 'Conferences', 'Lectures'],
+    defaultQuantity: 1,
+    defaultHeight: 2.0,
+    usesSubs: true,
+  },
+  [SystemTypeId.DistributedSystem]: {
+    id: SystemTypeId.DistributedSystem,
+    name: 'Distributed',
+    tagline: 'Even Coverage Grid',
+    description: 'Multiple speakers distributed for even coverage. Best for background music, retail, and large open spaces.',
+    icon: 'Grid3x3',
+    speakerTypes: [SpeakerType.PointSource, SpeakerType.Column],
+    defaultDeploymentMode: 'Center Mono',
+    supportsArraying: false,
+    useCases: ['Retail', 'Restaurants', 'Background Music', 'Delay Systems'],
+    defaultQuantity: 1,
+    defaultHeight: 3.0,
+    usesSubs: false,
+  },
+}
+
+/**
+ * Get system type configuration by ID.
+ */
+export function getSystemTypeConfig(id: SystemTypeId): SystemTypeConfig {
+  return SystemTypeConfigs[id]
+}
+
+/**
+ * Get all system type configurations as an array.
+ */
+export function getAllSystemTypeConfigs(): SystemTypeConfig[] {
+  return Object.values(SystemTypeConfigs)
+}

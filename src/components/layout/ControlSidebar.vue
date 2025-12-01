@@ -18,11 +18,12 @@ import {
   Lock,
 } from 'lucide-vue-next'
 import { useRoomStore, useSpeakerStore } from '@/stores'
-import { SpeakerType, type DeploymentMode, getUniqueBrands } from '@/data/speakers'
+import { SpeakerType, type DeploymentMode, type SystemTypeId } from '@/data/speakers'
 import Accordion from '@/components/ui/Accordion.vue'
 import SliderInput from '@/components/ui/SliderInput.vue'
 import SelectInput from '@/components/ui/SelectInput.vue'
-import SpeakerSelect from '@/components/ui/SpeakerSelect.vue'
+import SpeakerSelectModal from '@/components/ui/SpeakerSelectModal.vue'
+import SystemTypeSelector from '@/components/ui/SystemTypeSelector.vue'
 import NumberInput from '@/components/ui/NumberInput.vue'
 import TextInput from '@/components/ui/TextInput.vue'
 
@@ -32,9 +33,6 @@ const speakerStore = useSpeakerStore()
 const emit = defineEmits<{
   exportPdf: []
 }>()
-
-// Get unique brands for filtering
-const uniqueBrands = computed(() => getUniqueBrands())
 
 // Format subwoofer options
 const subwooferOptions = computed(() => [
@@ -69,6 +67,10 @@ function getSpeakerTypeLabel(type: SpeakerType): string {
     [SpeakerType.Subwoofer]: 'Subwoofer',
   }
   return labels[type] || type
+}
+
+function handleSystemTypeChange(type: SystemTypeId) {
+  speakerStore.setSystemType(type)
 }
 
 function handleSpeakerChange(id: string) {
@@ -169,12 +171,19 @@ function resetAll() {
 
       <!-- Speaker Selection -->
       <Accordion title="Speaker System" :icon="Speaker">
-        <div class="space-y-3">
-          <SpeakerSelect
+        <div class="space-y-4">
+          <!-- System Type Selector -->
+          <SystemTypeSelector
+            :model-value="speakerStore.selectedSystemType"
+            @update:model-value="handleSystemTypeChange"
+          />
+
+          <!-- Speaker Select Modal Trigger -->
+          <SpeakerSelectModal
             :model-value="speakerStore.selectedSpeakerId"
-            :speakers="speakerStore.availableSpeakers"
-            :brands="uniqueBrands"
-            label="Main Speaker"
+            :speakers="speakerStore.filteredSpeakers"
+            :brands="speakerStore.filteredBrands"
+            :title="`Select ${speakerStore.systemTypeConfig.name}`"
             @update:model-value="handleSpeakerChange"
           />
 
