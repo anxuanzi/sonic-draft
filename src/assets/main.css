@@ -1,9 +1,42 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Theme tokens for Tailwind v4 */
+@theme {
+  /* Fonts */
+  --font-mono: "JetBrains Mono", "Fira Code", Consolas, monospace;
+  --font-sans: Inter, system-ui, sans-serif;
+
+  /* Pro Audio Dark Theme colors */
+  --color-audio-bg: #0a0a0f;
+  --color-audio-panel: #12121a;
+  --color-audio-surface: #1a1a24;
+  --color-audio-border: #2a2a3a;
+  --color-audio-muted: #4a4a5a;
+  --color-audio-text: #e4e4e7;
+
+  /* Neon accents */
+  --color-neon-green: #00ff88;
+  --color-neon-blue: #00aaff;
+  --color-neon-orange: #ff8800;
+  --color-neon-red: #ff4444;
+  --color-neon-purple: #aa44ff;
+  --color-neon-cyan: #00ffff;
+
+  /* Sonic scale (for future use) */
+  --color-sonic-50: #f0fdf4;
+  --color-sonic-100: #dcfce7;
+  --color-sonic-200: #bbf7d0;
+  --color-sonic-300: #86efac;
+  --color-sonic-400: #4ade80;
+  --color-sonic-500: #22c55e;
+  --color-sonic-600: #16a34a;
+  --color-sonic-700: #15803d;
+  --color-sonic-800: #166534;
+  --color-sonic-900: #14532d;
+  --color-sonic-950: #052e16;
+}
 
 /* Base styles */
-@layer base {
   * {
     @apply box-border;
   }
@@ -33,10 +66,8 @@
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-audio-muted;
   }
-}
 
 /* Component styles */
-@layer components {
   /* Blueprint grid background */
   .blueprint-grid {
     background-image:
@@ -97,12 +128,16 @@
   }
 
   .btn-primary {
-    @apply btn bg-neon-green text-audio-bg hover:bg-neon-green/90
-           focus:ring-neon-green/50 glow-green;
+    @apply px-4 py-2 rounded-md font-medium transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-audio-bg
+           bg-neon-green text-audio-bg hover:bg-neon-green/90
+           focus:ring-neon-green/50 shadow-[0_0_10px_rgba(0,255,136,0.3),0_0_20px_rgba(0,255,136,0.2)];
   }
 
   .btn-secondary {
-    @apply btn bg-audio-surface border border-audio-border text-audio-text
+    @apply px-4 py-2 rounded-md font-medium transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-audio-bg
+           bg-audio-surface border border-audio-border text-audio-text
            hover:bg-audio-border hover:border-audio-muted
            focus:ring-audio-muted/50;
   }
@@ -132,10 +167,8 @@
     @apply absolute z-50 px-2 py-1 text-xs font-mono bg-audio-panel
            border border-audio-border rounded shadow-lg pointer-events-none;
   }
-}
 
 /* Utility classes */
-@layer utilities {
   .text-gradient {
     @apply bg-gradient-to-r from-neon-green to-neon-blue bg-clip-text text-transparent;
   }
@@ -143,4 +176,3 @@
   .border-gradient {
     border-image: linear-gradient(to right, #00ff88, #00aaff) 1;
   }
-}
