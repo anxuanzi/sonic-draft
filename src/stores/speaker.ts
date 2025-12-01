@@ -11,9 +11,12 @@ import { ref, computed, watch } from 'vue'
 import {
   type SpeakerModel,
   type SpeakerDeployment,
+  type CenterFillConfig,
+  type DeploymentMode,
   getSpeakerById,
   getMainSpeakers,
   getCompatibleSubwoofers,
+  getCenterFillSpeakers,
 } from '@/data/speakers'
 import { useAcoustics } from '@/composables/useAcoustics'
 import { useRoomStore } from './room'
@@ -29,7 +32,7 @@ export const useSpeakerStore = defineStore('speaker', () => {
   /** Currently selected main speaker ID */
   const selectedSpeakerId = ref('jbl-vrx932lap')
 
-  /** Number of main speakers */
+  /** Number of main speakers (per side in stereo mode) */
   const quantity = ref(4)
 
   /** Currently selected subwoofer ID */
@@ -44,8 +47,21 @@ export const useSpeakerStore = defineStore('speaker', () => {
   /** Tilt angle in degrees (positive = downward) */
   const tiltAngle = ref(8)
 
-  /** Horizontal aim angle in degrees (0 = straight ahead) */
+  /** Horizontal aim angle in degrees (0 = straight ahead, positive = toe-in) */
   const horizontalAim = ref(0)
+
+  /** Deployment mode: L/R Stereo or Center Mono */
+  const deploymentMode = ref<DeploymentMode>('L/R Stereo')
+
+  /** Distance between L/R arrays in meters */
+  const arraySpread = ref(8)
+
+  /** Center fill configuration */
+  const centerFill = ref<CenterFillConfig>({
+    enabled: false,
+    modelId: '',
+    gain: 0,
+  })
 
   // ============================================
   // Getters
@@ -69,6 +85,14 @@ export const useSpeakerStore = defineStore('speaker', () => {
     getCompatibleSubwoofers(selectedSpeakerId.value)
   )
 
+  /** Available speakers for center fill use */
+  const availableCenterFillSpeakers = computed(() => getCenterFillSpeakers())
+
+  /** Currently selected center fill speaker model */
+  const selectedCenterFillSpeaker = computed<SpeakerModel | undefined>(() =>
+    centerFill.value.modelId ? getSpeakerById(centerFill.value.modelId) : undefined
+  )
+
   /** Maximum array size for selected speaker */
   const maxArraySize = computed(() => selectedSpeaker.value?.maxArraySize || 12)
 
@@ -81,6 +105,8 @@ export const useSpeakerStore = defineStore('speaker', () => {
     trimHeight: trimHeight.value,
     tiltAngle: tiltAngle.value,
     horizontalAim: horizontalAim.value,
+    deploymentMode: deploymentMode.value,
+    arraySpread: arraySpread.value,
   }))
 
   /** Bill of Materials for current configuration */
@@ -207,6 +233,50 @@ export const useSpeakerStore = defineStore('speaker', () => {
   }
 
   /**
+   * Set the deployment mode.
+   */
+  function setDeploymentMode(mode: DeploymentMode) {
+    deploymentMode.value = mode
+  }
+
+  /**
+   * Set the array spread (distance between L/R arrays).
+   */
+  function setArraySpread(value: number) {
+    // Clamp to reasonable range (0 to room width minus some margin)
+    const maxSpread = Math.max(0, roomStore.width - 2)
+    arraySpread.value = Math.max(0, Math.min(maxSpread, value))
+  }
+
+  /**
+   * Toggle center fill enabled state.
+   */
+  function setCenterFillEnabled(enabled: boolean) {
+    centerFill.value.enabled = enabled
+    // If enabling and no model selected, default to first available
+    if (enabled && !centerFill.value.modelId) {
+      const speakers = getCenterFillSpeakers()
+      if (speakers.length > 0 && speakers[0]) {
+        centerFill.value.modelId = speakers[0].id
+      }
+    }
+  }
+
+  /**
+   * Set the center fill speaker model.
+   */
+  function setCenterFillModel(modelId: string) {
+    centerFill.value.modelId = modelId
+  }
+
+  /**
+   * Set the center fill gain adjustment.
+   */
+  function setCenterFillGain(gain: number) {
+    centerFill.value.gain = Math.max(-12, Math.min(6, gain))
+  }
+
+  /**
    * Reset to default configuration.
    */
   function resetToDefaults() {
@@ -217,6 +287,13 @@ export const useSpeakerStore = defineStore('speaker', () => {
     trimHeight.value = 4
     tiltAngle.value = 8
     horizontalAim.value = 0
+    deploymentMode.value = 'L/R Stereo'
+    arraySpread.value = 8
+    centerFill.value = {
+      enabled: false,
+      modelId: '',
+      gain: 0,
+    }
   }
 
   /**
@@ -257,12 +334,17 @@ export const useSpeakerStore = defineStore('speaker', () => {
     trimHeight,
     tiltAngle,
     horizontalAim,
+    deploymentMode,
+    arraySpread,
+    centerFill,
 
     // Getters
     selectedSpeaker,
     selectedSubwoofer,
     availableSpeakers,
     compatibleSubwoofers,
+    availableCenterFillSpeakers,
+    selectedCenterFillSpeaker,
     maxArraySize,
     deployment,
     bom,
@@ -282,6 +364,11 @@ export const useSpeakerStore = defineStore('speaker', () => {
     setTrimHeight,
     setTiltAngle,
     setHorizontalAim,
+    setDeploymentMode,
+    setArraySpread,
+    setCenterFillEnabled,
+    setCenterFillModel,
+    setCenterFillGain,
     resetToDefaults,
     autoCalculateTilt,
     suggestTrimHeight,

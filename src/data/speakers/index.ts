@@ -24,6 +24,8 @@ export {
   type SpeakerMeta,
   type SpeakerModel,
   type SpeakerDeployment,
+  type DeploymentMode,
+  type CenterFillConfig,
   type BOMItem,
   type BillOfMaterials,
 } from './types'
@@ -38,4 +40,5 @@ export {
   getSpeakersByType,
   getSpeakersByBrand,
   getUniqueBrands,
+  getCenterFillSpeakers,
 } from './database'

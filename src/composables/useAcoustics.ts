@@ -18,6 +18,7 @@ import {
   SpeakerType,
   type SpeakerModel,
   type SpeakerDeployment,
+  type CenterFillConfig,
   type BOMItem,
   type BillOfMaterials,
 } from '@/data/speakers'
@@ -231,6 +232,36 @@ export function useAcoustics() {
     return Math.min(horzAtten, vertAtten) + Math.max(horzAtten, vertAtten) * 0.5
   }
 
+  /**
+   * Sum multiple SPL values using energy summation (power addition).
+   *
+   * This is the correct way to combine SPL from multiple sources.
+   * Formula: Total SPL = 10 * log10(sum(10^(spl_n / 10)))
+   *
+   * @param splValues - Array of SPL values in dB
+   * @returns Combined SPL in dB
+   *
+   * @example
+   * ```typescript
+   * // Two identical sources at 100dB each
+   * sumMultipleSPL([100, 100]) // Returns ~103dB (+3dB for doubling)
+   *
+   * // Multiple sources at different levels
+   * sumMultipleSPL([100, 94, 88]) // Returns ~101.3dB
+   * ```
+   */
+  function sumMultipleSPL(splValues: number[]): number {
+    if (splValues.length === 0) return 0
+    if (splValues.length === 1) return splValues[0]!
+
+    // Convert each SPL to power, sum, then convert back to dB
+    const totalPower = splValues.reduce((sum, spl) => {
+      return sum + Math.pow(10, spl / 10)
+    }, 0)
+
+    return 10 * Math.log10(totalPower)
+  }
+
   // ============================================
   // Geometric Calculations
   // ============================================
@@ -380,6 +411,155 @@ export function useAcoustics() {
       horzAngle,
       vertAngle,
       attenuation,
+      inCoverage,
+    }
+  }
+
+  /**
+   * Multi-source SPL result including contribution from all sources.
+   */
+  interface MultiSourceSPLResult {
+    /** Total combined SPL at the point */
+    totalSPL: number
+    /** SPL from left source (if in stereo mode) */
+    leftSPL: number
+    /** SPL from right source (if in stereo mode) */
+    rightSPL: number
+    /** SPL from center fill (if enabled) */
+    centerFillSPL: number
+    /** Minimum distance to any source */
+    nearestDistance: number
+    /** Whether the point is within any source's coverage */
+    inCoverage: boolean
+  }
+
+  /**
+   * Calculate combined SPL at a point from multiple sources (L/R stereo + center fill).
+   *
+   * Handles both L/R Stereo and Center Mono deployment modes, with optional center fill.
+   *
+   * @param point - Target point in 3D space
+   * @param roomWidth - Room width in meters
+   * @param speaker - Main speaker model
+   * @param deployment - Deployment configuration
+   * @param centerFillConfig - Optional center fill configuration
+   * @param centerFillSpeaker - Optional center fill speaker model
+   * @returns Combined SPL result from all sources
+   */
+  function calculateMultiSourceSPL(
+    point: Point3D,
+    roomWidth: number,
+    speaker: SpeakerModel,
+    deployment: SpeakerDeployment,
+    centerFillConfig?: CenterFillConfig,
+    centerFillSpeaker?: SpeakerModel
+  ): MultiSourceSPLResult {
+    const splValues: number[] = []
+    let leftSPL = 0
+    let rightSPL = 0
+    let centerFillSPL = 0
+    let nearestDistance = Infinity
+    let inCoverage = false
+
+    if (deployment.deploymentMode === 'L/R Stereo') {
+      // Calculate left source position
+      const leftX = (roomWidth / 2) - (deployment.arraySpread / 2)
+      const leftPosition: Point3D = {
+        x: leftX,
+        y: deployment.trimHeight,
+        z: 0,
+      }
+
+      // Create a deployment config for left source with toe-in (aim right)
+      const leftDeployment: SpeakerDeployment = {
+        ...deployment,
+        horizontalAim: deployment.horizontalAim, // Positive aims right (toe-in)
+      }
+
+      const leftResult = calculateSPLAtPoint(point, leftPosition, speaker, leftDeployment)
+      leftSPL = leftResult.spl
+      splValues.push(leftSPL)
+      nearestDistance = Math.min(nearestDistance, leftResult.distance)
+      if (leftResult.inCoverage) inCoverage = true
+
+      // Calculate right source position
+      const rightX = (roomWidth / 2) + (deployment.arraySpread / 2)
+      const rightPosition: Point3D = {
+        x: rightX,
+        y: deployment.trimHeight,
+        z: 0,
+      }
+
+      // Create a deployment config for right source with toe-in (aim left)
+      const rightDeployment: SpeakerDeployment = {
+        ...deployment,
+        horizontalAim: -deployment.horizontalAim, // Negative aims left (toe-in)
+      }
+
+      const rightResult = calculateSPLAtPoint(point, rightPosition, speaker, rightDeployment)
+      rightSPL = rightResult.spl
+      splValues.push(rightSPL)
+      nearestDistance = Math.min(nearestDistance, rightResult.distance)
+      if (rightResult.inCoverage) inCoverage = true
+    } else {
+      // Center Mono mode - single source in the center
+      const centerPosition: Point3D = {
+        x: roomWidth / 2,
+        y: deployment.trimHeight,
+        z: 0,
+      }
+
+      const centerResult = calculateSPLAtPoint(point, centerPosition, speaker, deployment)
+      leftSPL = centerResult.spl
+      rightSPL = centerResult.spl
+      splValues.push(centerResult.spl)
+      nearestDistance = centerResult.distance
+      inCoverage = centerResult.inCoverage
+    }
+
+    // Add center fill contribution if enabled
+    if (centerFillConfig?.enabled && centerFillSpeaker) {
+      const centerFillPosition: Point3D = {
+        x: roomWidth / 2,
+        y: 1.5, // Center fills are typically at stage level or low
+        z: 0,
+      }
+
+      // Center fill deployment - point source with no tilt (aims straight out)
+      const centerFillDeployment: SpeakerDeployment = {
+        speakerId: centerFillSpeaker.id,
+        quantity: 1,
+        subQuantity: 0,
+        trimHeight: 1.5,
+        tiltAngle: 0,
+        horizontalAim: 0,
+        deploymentMode: 'Center Mono',
+        arraySpread: 0,
+      }
+
+      const fillResult = calculateSPLAtPoint(
+        point,
+        centerFillPosition,
+        centerFillSpeaker,
+        centerFillDeployment
+      )
+
+      // Apply gain adjustment
+      centerFillSPL = fillResult.spl + centerFillConfig.gain
+      splValues.push(centerFillSPL)
+      nearestDistance = Math.min(nearestDistance, fillResult.distance)
+      if (fillResult.inCoverage) inCoverage = true
+    }
+
+    // Calculate total SPL using energy summation
+    const totalSPL = sumMultipleSPL(splValues)
+
+    return {
+      totalSPL,
+      leftSPL,
+      rightSPL,
+      centerFillSPL,
+      nearestDistance,
       inCoverage,
     }
   }
@@ -589,6 +769,7 @@ export function useAcoustics() {
     calculateCylindricalLoss,
     getOffAxisAttenuation,
     getCombinedAttenuation,
+    sumMultipleSPL,
 
     // Geometry
     distance2D,
@@ -598,6 +779,7 @@ export function useAcoustics() {
 
     // SPL at point
     calculateSPLAtPoint,
+    calculateMultiSourceSPL,
 
     // Coverage analysis
     checkCeilingIntersection,

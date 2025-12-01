@@ -94,3 +94,13 @@ export function getUniqueBrands (): string[] {
   const brands = new Set(speakerDatabase.map((s) => s.brand))
   return Array.from(brands).sort()
 }
+
+/**
+ * Get speakers suitable for center fill use.
+ * Includes point source and column speakers (not line arrays or subwoofers).
+ */
+export function getCenterFillSpeakers (): SpeakerModel[] {
+  return speakerDatabase.filter(
+    (s) => s.type === SpeakerType.PointSource || s.type === SpeakerType.Column
+  )
+}

@@ -202,6 +202,23 @@ export interface SpeakerModel {
 }
 
 /**
+ * Deployment mode for the speaker system.
+ */
+export type DeploymentMode = 'L/R Stereo' | 'Center Mono'
+
+/**
+ * Center fill configuration.
+ */
+export interface CenterFillConfig {
+  /** Whether center fill is enabled */
+  enabled: boolean
+  /** ID of the center fill speaker model */
+  modelId: string
+  /** Gain adjustment in dB (-12 to +6) */
+  gain: number
+}
+
+/**
  * Configuration for a deployed speaker system.
  */
 export interface SpeakerDeployment {
@@ -211,7 +228,7 @@ export interface SpeakerDeployment {
   speakerId: string
 
   /**
-   * Number of main/top speakers.
+   * Number of main/top speakers (per side in stereo mode).
    */
   quantity: number
 
@@ -237,8 +254,19 @@ export interface SpeakerDeployment {
 
   /**
    * Horizontal aim angle in degrees from center.
+   * In stereo mode, this is the toe-in angle (both arrays aim inward).
    */
   horizontalAim: number
+
+  /**
+   * Deployment mode: L/R Stereo or Center Mono.
+   */
+  deploymentMode: DeploymentMode
+
+  /**
+   * Distance between L/R arrays in meters (only used in L/R Stereo mode).
+   */
+  arraySpread: number
 }
 
 /**

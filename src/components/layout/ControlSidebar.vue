@@ -14,9 +14,10 @@ import {
   RotateCcw,
   Download,
   Wand2,
+  Radio,
 } from 'lucide-vue-next'
 import { useRoomStore, useSpeakerStore } from '@/stores'
-import { SpeakerType } from '@/data/speakers'
+import { SpeakerType, type DeploymentMode } from '@/data/speakers'
 import Accordion from '@/components/ui/Accordion.vue'
 import SliderInput from '@/components/ui/SliderInput.vue'
 import SelectInput from '@/components/ui/SelectInput.vue'
@@ -49,6 +50,21 @@ const subwooferOptions = computed(() => [
   })),
 ])
 
+// Deployment mode options
+const deploymentModeOptions = [
+  { value: 'L/R Stereo', label: 'L/R Stereo', sublabel: 'Standard stereo' },
+  { value: 'Center Mono', label: 'Center Mono', sublabel: 'Single array' },
+]
+
+// Format center fill speaker options
+const centerFillOptions = computed(() =>
+  speakerStore.availableCenterFillSpeakers.map((s) => ({
+    value: s.id,
+    label: `${s.brand} ${s.model}`,
+    sublabel: getSpeakerTypeLabel(s.type),
+  }))
+)
+
 function getSpeakerTypeLabel(type: SpeakerType): string {
   const labels: Record<SpeakerType, string> = {
     [SpeakerType.LineArray]: 'Line Array',
@@ -65,6 +81,10 @@ function handleSpeakerChange(id: string) {
 
 function handleSubChange(id: string) {
   speakerStore.selectSubwoofer(id || undefined)
+}
+
+function handleDeploymentModeChange(mode: string) {
+  speakerStore.setDeploymentMode(mode as DeploymentMode)
 }
 
 function resetAll() {
@@ -208,6 +228,26 @@ function resetAll() {
       <!-- Deployment -->
       <Accordion title="Deployment" :icon="Sliders">
         <div class="space-y-3">
+          <!-- Deployment Mode -->
+          <SelectInput
+            :model-value="speakerStore.deploymentMode"
+            :options="deploymentModeOptions"
+            label="Mode"
+            @update:model-value="handleDeploymentModeChange"
+          />
+
+          <!-- Array Spread (only in L/R Stereo mode) -->
+          <SliderInput
+            v-if="speakerStore.deploymentMode === 'L/R Stereo'"
+            :model-value="speakerStore.arraySpread"
+            :min="0"
+            :max="Math.max(2, roomStore.width - 2)"
+            :step="0.5"
+            label="Array Spread (L/R)"
+            unit="m"
+            @update:model-value="speakerStore.setArraySpread"
+          />
+
           <SliderInput
             :model-value="speakerStore.trimHeight"
             :min="2"
@@ -231,7 +271,7 @@ function resetAll() {
             :min="-45"
             :max="45"
             :step="1"
-            label="Horizontal Aim"
+            :label="speakerStore.deploymentMode === 'L/R Stereo' ? 'Toe-In Angle' : 'Horizontal Aim'"
             unit="°"
             @update:model-value="speakerStore.setHorizontalAim"
           />
@@ -245,6 +285,10 @@ function resetAll() {
             <div class="flex justify-between">
               <span class="text-audio-muted">Top of Array:</span>
               <span class="font-mono text-audio-text">{{ speakerStore.topOfArrayHeight.toFixed(2) }} m</span>
+            </div>
+            <div v-if="speakerStore.deploymentMode === 'L/R Stereo'" class="flex justify-between mt-1 pt-1 border-t border-audio-border">
+              <span class="text-audio-muted">L/R Separation:</span>
+              <span class="font-mono text-audio-text">{{ speakerStore.arraySpread.toFixed(1) }} m</span>
             </div>
           </div>
 
@@ -264,6 +308,66 @@ function resetAll() {
               <Wand2 class="w-3 h-3" />
               Suggest Height
             </button>
+          </div>
+        </div>
+      </Accordion>
+
+      <!-- Center Fill (only in L/R Stereo mode) -->
+      <Accordion v-if="speakerStore.deploymentMode === 'L/R Stereo'" title="Center Fill" :icon="Radio">
+        <div class="space-y-3">
+          <!-- Enable Toggle -->
+          <div class="flex items-center justify-between">
+            <label class="text-xs text-audio-muted">Enable Center Fill</label>
+            <button
+              class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors"
+              :class="speakerStore.centerFill.enabled ? 'bg-neon-green' : 'bg-audio-border'"
+              @click="speakerStore.setCenterFillEnabled(!speakerStore.centerFill.enabled)"
+            >
+              <span
+                class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform"
+                :class="speakerStore.centerFill.enabled ? 'translate-x-4.5' : 'translate-x-1'"
+              />
+            </button>
+          </div>
+
+          <!-- Center Fill Options (only when enabled) -->
+          <template v-if="speakerStore.centerFill.enabled">
+            <SelectInput
+              :model-value="speakerStore.centerFill.modelId"
+              :options="centerFillOptions"
+              label="Fill Speaker"
+              @update:model-value="speakerStore.setCenterFillModel"
+            />
+
+            <SliderInput
+              :model-value="speakerStore.centerFill.gain"
+              :min="-12"
+              :max="6"
+              :step="1"
+              label="Gain Adjust"
+              unit="dB"
+              @update:model-value="speakerStore.setCenterFillGain"
+            />
+
+            <!-- Center Fill Info -->
+            <div v-if="speakerStore.selectedCenterFillSpeaker" class="p-2 bg-audio-surface rounded-md text-xs">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-neon-blue font-medium">
+                  {{ getSpeakerTypeLabel(speakerStore.selectedCenterFillSpeaker.type) }}
+                </span>
+                <span class="text-audio-muted">
+                  {{ speakerStore.selectedCenterFillSpeaker.specs.maxSPL }} dB
+                </span>
+              </div>
+              <div class="text-audio-muted">
+                Coverage: {{ speakerStore.selectedCenterFillSpeaker.specs.horzDispersion }}° H × {{ speakerStore.selectedCenterFillSpeaker.specs.vertDispersion }}° V
+              </div>
+            </div>
+          </template>
+
+          <!-- Info when disabled -->
+          <div v-else class="p-2 bg-audio-surface rounded-md text-xs text-audio-muted">
+            Center fills help cover the "power alley" gap between L/R arrays for front row listeners.
           </div>
         </div>
       </Accordion>

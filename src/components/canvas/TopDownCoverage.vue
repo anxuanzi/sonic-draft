@@ -249,11 +249,10 @@ function startHeatmap(ctx: CanvasRenderingContext2D, speaker: any) {
   const resolution = Math.max(10, Math.round(12 / Math.min(dpr, 2)))
   const padding = 40
   const listenerHeight = 1.4
-  const speakerPosition: Point3D = {
-    x: roomStore.width / 2,
-    y: speakerStore.trimHeight,
-    z: 0,
-  }
+
+  // Get center fill speaker if enabled
+  const centerFillConfig = speakerStore.centerFill
+  const centerFillSpeaker = speakerStore.selectedCenterFillSpeaker
 
   let px = padding
   let py = padding
@@ -281,13 +280,17 @@ function startHeatmap(ctx: CanvasRenderingContext2D, speaker: any) {
         const roomX = toRoomX(px + resolution / 2)
         const roomZ = toRoomY(py + resolution / 2)
         const point: Point3D = { x: roomX, y: listenerHeight, z: roomZ }
-        const result = acoustics.calculateSPLAtPoint(
+
+        // Use multi-source SPL calculation for L/R stereo + center fill
+        const result = acoustics.calculateMultiSourceSPL(
           point,
-          speakerPosition,
+          roomStore.width,
           speaker,
-          speakerStore.deployment
+          speakerStore.deployment,
+          centerFillConfig,
+          centerFillSpeaker
         )
-        ctx.fillStyle = getSPLColor(result.spl)
+        ctx.fillStyle = getSPLColor(result.totalSPL)
         ctx.fillRect(px, py, resolution, resolution)
 
         py += resolution
@@ -311,58 +314,181 @@ function startHeatmap(ctx: CanvasRenderingContext2D, speaker: any) {
 }
 
 function drawSpeaker(ctx: CanvasRenderingContext2D) {
-  const speakerX = toCanvasX(roomStore.width / 2)
-  const speakerY = toCanvasY(0) + 10
+  const deployment = speakerStore.deployment
 
-  // Speaker icon
-  ctx.fillStyle = '#00ff88'
-  ctx.beginPath()
-  ctx.arc(speakerX, speakerY, 8, 0, Math.PI * 2)
-  ctx.fill()
+  if (deployment.deploymentMode === 'L/R Stereo') {
+    // Draw Left speaker
+    const leftX = toCanvasX((roomStore.width / 2) - (deployment.arraySpread / 2))
+    const speakerY = toCanvasY(0) + 10
 
-  // Speaker label
-  ctx.fillStyle = '#00ff88'
-  ctx.font = '10px JetBrains Mono, monospace'
-  ctx.textAlign = 'center'
-  ctx.fillText(`${speakerStore.quantity}x`, speakerX, speakerY + 22)
+    ctx.fillStyle = '#00ff88'
+    ctx.beginPath()
+    ctx.arc(leftX, speakerY, 8, 0, Math.PI * 2)
+    ctx.fill()
+
+    // Left label
+    ctx.fillStyle = '#00ff88'
+    ctx.font = '10px JetBrains Mono, monospace'
+    ctx.textAlign = 'center'
+    ctx.fillText(`L ${speakerStore.quantity}x`, leftX, speakerY + 22)
+
+    // Draw Right speaker
+    const rightX = toCanvasX((roomStore.width / 2) + (deployment.arraySpread / 2))
+
+    ctx.beginPath()
+    ctx.arc(rightX, speakerY, 8, 0, Math.PI * 2)
+    ctx.fill()
+
+    // Right label
+    ctx.fillText(`R ${speakerStore.quantity}x`, rightX, speakerY + 22)
+
+    // Draw center fill if enabled
+    if (speakerStore.centerFill.enabled && speakerStore.selectedCenterFillSpeaker) {
+      const centerX = toCanvasX(roomStore.width / 2)
+      const fillY = toCanvasY(0) + 10
+
+      ctx.fillStyle = '#00aaff'
+      ctx.beginPath()
+      ctx.arc(centerX, fillY, 6, 0, Math.PI * 2)
+      ctx.fill()
+
+      ctx.fillStyle = '#00aaff'
+      ctx.font = '9px JetBrains Mono, monospace'
+      ctx.fillText('CF', centerX, fillY + 20)
+    }
+  } else {
+    // Center Mono mode - single speaker
+    const speakerX = toCanvasX(roomStore.width / 2)
+    const speakerY = toCanvasY(0) + 10
+
+    ctx.fillStyle = '#00ff88'
+    ctx.beginPath()
+    ctx.arc(speakerX, speakerY, 8, 0, Math.PI * 2)
+    ctx.fill()
+
+    ctx.fillStyle = '#00ff88'
+    ctx.font = '10px JetBrains Mono, monospace'
+    ctx.textAlign = 'center'
+    ctx.fillText(`${speakerStore.quantity}x`, speakerX, speakerY + 22)
+  }
 }
 
 function drawCoverageCone(ctx: CanvasRenderingContext2D, speaker: any) {
-  const speakerX = toCanvasX(roomStore.width / 2)
-  const speakerY = toCanvasY(0)
-
+  const deployment = speakerStore.deployment
   const horzAngle = (speaker.specs.horzDispersion / 2) * (Math.PI / 180)
-  const aimAngle = speakerStore.horizontalAim * (Math.PI / 180)
-
-  // Calculate cone endpoints at room depth
-  const depthInCanvas = toCanvasY(roomStore.depth) - speakerY
-  const leftAngle = aimAngle - horzAngle
-  const rightAngle = aimAngle + horzAngle
-
-  const leftX = speakerX + Math.sin(leftAngle) * depthInCanvas * 2
-  const rightX = speakerX + Math.sin(rightAngle) * depthInCanvas * 2
   const endY = toCanvasY(roomStore.depth)
+  const baseY = toCanvasY(0)
+  const depthInCanvas = endY - baseY
 
-  // Draw coverage cone outline
-  ctx.strokeStyle = 'rgba(0, 255, 136, 0.5)'
-  ctx.lineWidth = 2
-  ctx.setLineDash([5, 5])
-  ctx.beginPath()
-  ctx.moveTo(speakerX, speakerY + 10)
-  ctx.lineTo(leftX, endY)
-  ctx.moveTo(speakerX, speakerY + 10)
-  ctx.lineTo(rightX, endY)
-  ctx.stroke()
-  ctx.setLineDash([])
+  if (deployment.deploymentMode === 'L/R Stereo') {
+    // Draw Left speaker cone
+    const leftSpeakerX = toCanvasX((roomStore.width / 2) - (deployment.arraySpread / 2))
+    // Left speaker aims right (toe-in)
+    const leftAimAngle = speakerStore.horizontalAim * (Math.PI / 180)
 
-  // Fill coverage area
-  ctx.fillStyle = 'rgba(0, 255, 136, 0.05)'
-  ctx.beginPath()
-  ctx.moveTo(speakerX, speakerY + 10)
-  ctx.lineTo(leftX, endY)
-  ctx.lineTo(rightX, endY)
-  ctx.closePath()
-  ctx.fill()
+    const leftConeLeft = leftSpeakerX + Math.sin(leftAimAngle - horzAngle) * depthInCanvas * 2
+    const leftConeRight = leftSpeakerX + Math.sin(leftAimAngle + horzAngle) * depthInCanvas * 2
+
+    // Draw left cone outline
+    ctx.strokeStyle = 'rgba(0, 255, 136, 0.4)'
+    ctx.lineWidth = 2
+    ctx.setLineDash([5, 5])
+    ctx.beginPath()
+    ctx.moveTo(leftSpeakerX, baseY + 10)
+    ctx.lineTo(leftConeLeft, endY)
+    ctx.moveTo(leftSpeakerX, baseY + 10)
+    ctx.lineTo(leftConeRight, endY)
+    ctx.stroke()
+
+    // Fill left coverage area
+    ctx.fillStyle = 'rgba(0, 255, 136, 0.03)'
+    ctx.beginPath()
+    ctx.moveTo(leftSpeakerX, baseY + 10)
+    ctx.lineTo(leftConeLeft, endY)
+    ctx.lineTo(leftConeRight, endY)
+    ctx.closePath()
+    ctx.fill()
+
+    // Draw Right speaker cone
+    const rightSpeakerX = toCanvasX((roomStore.width / 2) + (deployment.arraySpread / 2))
+    // Right speaker aims left (toe-in)
+    const rightAimAngle = -speakerStore.horizontalAim * (Math.PI / 180)
+
+    const rightConeLeft = rightSpeakerX + Math.sin(rightAimAngle - horzAngle) * depthInCanvas * 2
+    const rightConeRight = rightSpeakerX + Math.sin(rightAimAngle + horzAngle) * depthInCanvas * 2
+
+    // Draw right cone outline
+    ctx.beginPath()
+    ctx.moveTo(rightSpeakerX, baseY + 10)
+    ctx.lineTo(rightConeLeft, endY)
+    ctx.moveTo(rightSpeakerX, baseY + 10)
+    ctx.lineTo(rightConeRight, endY)
+    ctx.stroke()
+    ctx.setLineDash([])
+
+    // Fill right coverage area
+    ctx.fillStyle = 'rgba(0, 255, 136, 0.03)'
+    ctx.beginPath()
+    ctx.moveTo(rightSpeakerX, baseY + 10)
+    ctx.lineTo(rightConeLeft, endY)
+    ctx.lineTo(rightConeRight, endY)
+    ctx.closePath()
+    ctx.fill()
+
+    // Draw center fill cone if enabled
+    if (speakerStore.centerFill.enabled && speakerStore.selectedCenterFillSpeaker) {
+      const cfSpeaker = speakerStore.selectedCenterFillSpeaker
+      const cfHorzAngle = (cfSpeaker.specs.horzDispersion / 2) * (Math.PI / 180)
+      const centerX = toCanvasX(roomStore.width / 2)
+
+      const cfLeft = centerX + Math.sin(-cfHorzAngle) * depthInCanvas * 0.5
+      const cfRight = centerX + Math.sin(cfHorzAngle) * depthInCanvas * 0.5
+
+      ctx.strokeStyle = 'rgba(0, 170, 255, 0.4)'
+      ctx.setLineDash([3, 3])
+      ctx.beginPath()
+      ctx.moveTo(centerX, baseY + 10)
+      ctx.lineTo(cfLeft, baseY + depthInCanvas * 0.5)
+      ctx.moveTo(centerX, baseY + 10)
+      ctx.lineTo(cfRight, baseY + depthInCanvas * 0.5)
+      ctx.stroke()
+      ctx.setLineDash([])
+
+      ctx.fillStyle = 'rgba(0, 170, 255, 0.03)'
+      ctx.beginPath()
+      ctx.moveTo(centerX, baseY + 10)
+      ctx.lineTo(cfLeft, baseY + depthInCanvas * 0.5)
+      ctx.lineTo(cfRight, baseY + depthInCanvas * 0.5)
+      ctx.closePath()
+      ctx.fill()
+    }
+  } else {
+    // Center Mono mode - single cone
+    const speakerX = toCanvasX(roomStore.width / 2)
+    const aimAngle = speakerStore.horizontalAim * (Math.PI / 180)
+
+    const leftX = speakerX + Math.sin(aimAngle - horzAngle) * depthInCanvas * 2
+    const rightX = speakerX + Math.sin(aimAngle + horzAngle) * depthInCanvas * 2
+
+    ctx.strokeStyle = 'rgba(0, 255, 136, 0.5)'
+    ctx.lineWidth = 2
+    ctx.setLineDash([5, 5])
+    ctx.beginPath()
+    ctx.moveTo(speakerX, baseY + 10)
+    ctx.lineTo(leftX, endY)
+    ctx.moveTo(speakerX, baseY + 10)
+    ctx.lineTo(rightX, endY)
+    ctx.stroke()
+    ctx.setLineDash([])
+
+    ctx.fillStyle = 'rgba(0, 255, 136, 0.05)'
+    ctx.beginPath()
+    ctx.moveTo(speakerX, baseY + 10)
+    ctx.lineTo(leftX, endY)
+    ctx.lineTo(rightX, endY)
+    ctx.closePath()
+    ctx.fill()
+  }
 }
 
 function drawLegend(ctx: CanvasRenderingContext2D) {
@@ -490,24 +616,22 @@ function handleMouseMove(event: MouseEvent) {
   const roomZ = toRoomY(y)
   const listenerHeight = 1.4
 
-  const speakerPosition: Point3D = {
-    x: roomStore.width / 2,
-    y: speakerStore.trimHeight,
-    z: 0,
-  }
-
   if (settingsStore.showSPL) {
     const point: Point3D = { x: roomX, y: listenerHeight, z: roomZ }
-    const result = acoustics.calculateSPLAtPoint(
+
+    // Use multi-source SPL calculation
+    const result = acoustics.calculateMultiSourceSPL(
       point,
-      speakerPosition,
+      roomStore.width,
       speaker,
-      speakerStore.deployment
+      speakerStore.deployment,
+      speakerStore.centerFill,
+      speakerStore.selectedCenterFillSpeaker
     )
 
     probeData.value = {
-      spl: result.spl,
-      distance: result.distance,
+      spl: result.totalSPL,
+      distance: result.nearestDistance,
     }
   } else {
     // When SPL is hidden, avoid heavy computation and clear probe data
@@ -544,6 +668,8 @@ watch(
     () => roomStore.dimensions,
     () => speakerStore.deployment,
     () => speakerStore.selectedSpeaker,
+    () => speakerStore.centerFill,
+    () => speakerStore.selectedCenterFillSpeaker,
     () => settingsStore.showGrid,
     () => settingsStore.showLegend,
     () => settingsStore.showSPL,
