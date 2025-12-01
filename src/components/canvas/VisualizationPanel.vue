@@ -37,7 +37,7 @@ defineExpose({
 <template>
   <div class="flex flex-col h-full">
     <!-- View Mode Toggle -->
-    <div class="flex items-center justify-center gap-1 p-2 bg-audio-panel border-b border-audio-border">
+    <div class="flex items-center justify-center gap-2 p-2 bg-audio-panel border-b border-audio-border">
       <button
         v-for="option in viewModeOptions"
         :key="option.mode"
@@ -51,6 +51,23 @@ defineExpose({
       >
         <component :is="option.icon" class="w-3.5 h-3.5" />
         {{ option.label }}
+      </button>
+
+      <!-- Separator -->
+      <div class="mx-2 h-5 w-px bg-audio-border" />
+
+      <!-- SPL Toggle (off by default) -->
+      <button
+        class="px-3 py-1.5 rounded text-xs font-medium transition-colors border"
+        :class="
+          settingsStore.showSPL
+            ? 'bg-neon-green/20 text-neon-green border-neon-green/30'
+            : 'text-audio-muted hover:text-audio-text hover:bg-audio-surface border-audio-border'
+        "
+        @click="settingsStore.toggleSPL()"
+        title="Toggle SPL heatmap overlay"
+      >
+        Show SPL
       </button>
     </div>
 

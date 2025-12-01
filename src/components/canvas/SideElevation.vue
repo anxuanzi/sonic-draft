@@ -20,6 +20,16 @@ const containerRef = ref<HTMLDivElement | null>(null)
 const canvasWidth = ref(600)
 const canvasHeight = ref(300)
 
+// rAF draw scheduler to batch rapid changes
+let rafId: number | null = null
+function requestDraw() {
+  if (rafId != null) cancelAnimationFrame(rafId)
+  rafId = requestAnimationFrame(() => {
+    rafId = null
+    draw()
+  })
+}
+
 // Mouse position for probe tooltip
 const mousePos = ref<{ x: number; y: number } | null>(null)
 const probeData = ref<{ spl: number; distance: number; height: number } | null>(null)
@@ -96,8 +106,10 @@ function draw() {
     drawGrid(ctx)
   }
 
-  // Draw SPL heatmap
-  drawHeatmap(ctx, speaker)
+  // Draw SPL heatmap only when enabled
+  if (settingsStore.showSPL) {
+    drawHeatmap(ctx, speaker)
+  }
 
   // Draw room outline
   drawRoomOutline(ctx)
@@ -116,8 +128,8 @@ function draw() {
   // Draw audience area
   drawAudienceArea(ctx)
 
-  // Draw legend
-  if (settingsStore.showLegend) {
+  // Draw legend (only when SPL is shown)
+  if (settingsStore.showLegend && settingsStore.showSPL) {
     drawLegend(ctx)
   }
 
@@ -202,7 +214,9 @@ function drawRoomOutline(ctx: CanvasRenderingContext2D) {
 }
 
 function drawHeatmap(ctx: CanvasRenderingContext2D, speaker: any) {
-  const resolution = 8
+  // Slightly coarser default resolution for interactivity; account for DPR
+  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+  const resolution = Math.max(8, Math.round(12 / Math.min(dpr, 2)))
   const speakerPosition: Point3D = {
     x: roomStore.width / 2,
     y: speakerStore.trimHeight,
@@ -495,26 +509,30 @@ function handleMouseMove(event: MouseEvent) {
   }
 
   const point: Point3D = { x: roomStore.width / 2, y: roomY, z: roomZ }
-  const result = acoustics.calculateSPLAtPoint(
-    point,
-    speakerPosition,
-    speaker,
-    speakerStore.deployment
-  )
+  if (settingsStore.showSPL) {
+    const result = acoustics.calculateSPLAtPoint(
+      point,
+      speakerPosition,
+      speaker,
+      speakerStore.deployment
+    )
 
-  probeData.value = {
-    spl: result.spl,
-    distance: result.distance,
-    height: roomY,
+    probeData.value = {
+      spl: result.spl,
+      distance: result.distance,
+      height: roomY,
+    }
+  } else {
+    probeData.value = null
   }
 
-  draw()
+  requestDraw()
 }
 
 function handleMouseLeave() {
   mousePos.value = null
   probeData.value = null
-  draw()
+  requestDraw()
 }
 
 function handleResize() {
@@ -533,10 +551,11 @@ watch(
     () => settingsStore.showGrid,
     () => settingsStore.showLegend,
     () => settingsStore.showReflectionWarnings,
+    () => settingsStore.showSPL,
     () => settingsStore.splColorScheme,
   ],
   () => {
-    draw()
+    requestDraw()
   },
   { deep: true }
 )

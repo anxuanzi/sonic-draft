@@ -27,6 +27,9 @@ export const useSettingsStore = defineStore('settings', () => {
   /** Show SPL legend on canvas */
   const showLegend = ref(true)
 
+  /** Show SPL visualizations (heatmap/legend). Default off to emphasize coverage. */
+  const showSPL = ref(false)
+
   /** Show measurement probe on hover */
   const showProbe = ref(true)
 
@@ -108,6 +111,11 @@ export const useSettingsStore = defineStore('settings', () => {
     showLegend.value = !showLegend.value
   }
 
+  /** Toggle SPL visualization (heatmap + legend). */
+  function toggleSPL() {
+    showSPL.value = !showSPL.value
+  }
+
   /**
    * Toggle probe visibility.
    */
@@ -160,6 +168,7 @@ export const useSettingsStore = defineStore('settings', () => {
     viewMode.value = 'split'
     showGrid.value = true
     showLegend.value = true
+    showSPL.value = false
     showProbe.value = true
     showReflectionWarnings.value = true
     canvasResolution.value = 1
@@ -177,6 +186,7 @@ export const useSettingsStore = defineStore('settings', () => {
       viewMode: viewMode.value,
       showGrid: showGrid.value,
       showLegend: showLegend.value,
+      showSPL: showSPL.value,
       showProbe: showProbe.value,
       showReflectionWarnings: showReflectionWarnings.value,
       canvasResolution: canvasResolution.value,
@@ -195,6 +205,7 @@ export const useSettingsStore = defineStore('settings', () => {
         if (settings.viewMode) viewMode.value = settings.viewMode
         if (settings.showGrid !== undefined) showGrid.value = settings.showGrid
         if (settings.showLegend !== undefined) showLegend.value = settings.showLegend
+        if (settings.showSPL !== undefined) showSPL.value = settings.showSPL
         if (settings.showProbe !== undefined) showProbe.value = settings.showProbe
         if (settings.showReflectionWarnings !== undefined)
           showReflectionWarnings.value = settings.showReflectionWarnings
@@ -238,6 +249,7 @@ export const useSettingsStore = defineStore('settings', () => {
     viewMode,
     showGrid,
     showLegend,
+    showSPL,
     showProbe,
     showReflectionWarnings,
     canvasResolution,
@@ -257,6 +269,7 @@ export const useSettingsStore = defineStore('settings', () => {
     setViewMode,
     toggleGrid,
     toggleLegend,
+    toggleSPL,
     toggleProbe,
     toggleReflectionWarnings,
     toggleSidebar,

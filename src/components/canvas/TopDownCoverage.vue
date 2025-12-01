@@ -20,6 +20,16 @@ const containerRef = ref<HTMLDivElement | null>(null)
 const canvasWidth = ref(600)
 const canvasHeight = ref(400)
 
+// rAF draw scheduler to batch rapid changes
+let rafId: number | null = null
+function requestDraw() {
+  if (rafId != null) cancelAnimationFrame(rafId)
+  rafId = requestAnimationFrame(() => {
+    rafId = null
+    draw()
+  })
+}
+
 // Mouse position for probe tooltip
 const mousePos = ref<{ x: number; y: number } | null>(null)
 const probeData = ref<{ spl: number; distance: number } | null>(null)
@@ -110,8 +120,10 @@ function draw() {
     drawGrid(ctx)
   }
 
-  // Draw SPL heatmap
-  drawHeatmap(ctx, speaker)
+  // Draw SPL heatmap (only when enabled)
+  if (settingsStore.showSPL) {
+    drawHeatmap(ctx, speaker)
+  }
 
   // Draw room outline
   drawRoomOutline(ctx)
@@ -122,13 +134,13 @@ function draw() {
   // Draw coverage cone
   drawCoverageCone(ctx, speaker)
 
-  // Draw legend
-  if (settingsStore.showLegend) {
+  // Draw legend (only when SPL is shown)
+  if (settingsStore.showLegend && settingsStore.showSPL) {
     drawLegend(ctx)
   }
 
-  // Draw probe tooltip
-  if (mousePos.value && probeData.value && settingsStore.showProbe) {
+  // Draw probe tooltip (only when SPL is shown)
+  if (mousePos.value && probeData.value && settingsStore.showProbe && settingsStore.showSPL) {
     drawProbe(ctx)
   }
 }
@@ -196,7 +208,9 @@ function drawRoomOutline(ctx: CanvasRenderingContext2D) {
 }
 
 function drawHeatmap(ctx: CanvasRenderingContext2D, speaker: any) {
-  const resolution = 10 // pixels per grid cell
+  // Slightly coarser default resolution for better interactivity
+  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+  const resolution = Math.max(10, Math.round(12 / Math.min(dpr, 2))) // pixels per grid cell
   const padding = 40
   const listenerHeight = 1.4
 
@@ -402,26 +416,31 @@ function handleMouseMove(event: MouseEvent) {
     z: 0,
   }
 
-  const point: Point3D = { x: roomX, y: listenerHeight, z: roomZ }
-  const result = acoustics.calculateSPLAtPoint(
-    point,
-    speakerPosition,
-    speaker,
-    speakerStore.deployment
-  )
+  if (settingsStore.showSPL) {
+    const point: Point3D = { x: roomX, y: listenerHeight, z: roomZ }
+    const result = acoustics.calculateSPLAtPoint(
+      point,
+      speakerPosition,
+      speaker,
+      speakerStore.deployment
+    )
 
-  probeData.value = {
-    spl: result.spl,
-    distance: result.distance,
+    probeData.value = {
+      spl: result.spl,
+      distance: result.distance,
+    }
+  } else {
+    // When SPL is hidden, avoid heavy computation and clear probe data
+    probeData.value = null
   }
 
-  draw()
+  requestDraw()
 }
 
 function handleMouseLeave() {
   mousePos.value = null
   probeData.value = null
-  draw()
+  requestDraw()
 }
 
 function handleResize() {
@@ -440,10 +459,11 @@ watch(
     () => speakerStore.selectedSpeaker,
     () => settingsStore.showGrid,
     () => settingsStore.showLegend,
+    () => settingsStore.showSPL,
     () => settingsStore.splColorScheme,
   ],
   () => {
-    draw()
+    requestDraw()
   },
   { deep: true }
 )
