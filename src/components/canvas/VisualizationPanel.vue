@@ -6,7 +6,7 @@
  * Supports split view, top-down only, and side elevation only modes.
  */
 
-import { ref } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { LayoutGrid, ArrowUpDown, ArrowLeftRight } from 'lucide-vue-next'
 import { useSettingsStore, type ViewMode } from '@/stores'
 import TopDownCoverage from './TopDownCoverage.vue'
@@ -17,14 +17,36 @@ const settingsStore = useSettingsStore()
 const topDownRef = ref<InstanceType<typeof TopDownCoverage> | null>(null)
 const sideElevationRef = ref<InstanceType<typeof SideElevation> | null>(null)
 
+// Track SPL heatmap computing state from children
+const topComputing = ref(false)
+const sideComputing = ref(false)
+
+const splComputingOnVisibleViews = computed(() => {
+  if (!settingsStore.showSPL) return false
+  if (settingsStore.viewMode === 'topDown') return topComputing.value
+  if (settingsStore.viewMode === 'sideElevation') return sideComputing.value
+  // split
+  return topComputing.value || sideComputing.value
+})
+
 const viewModeOptions: { mode: ViewMode; icon: any; label: string }[] = [
   { mode: 'split', icon: LayoutGrid, label: 'Split View' },
   { mode: 'topDown', icon: ArrowUpDown, label: 'Top Down' },
   { mode: 'sideElevation', icon: ArrowLeftRight, label: 'Side Elevation' },
 ]
 
-function setViewMode(mode: ViewMode) {
+async function setViewMode(mode: ViewMode) {
   settingsStore.setViewMode(mode)
+  // Wait for DOM/component mount, then trigger immediate draw on visible canvases
+  await nextTick()
+  if (mode === 'split') {
+    topDownRef.value?.draw?.()
+    sideElevationRef.value?.draw?.()
+  } else if (mode === 'topDown') {
+    topDownRef.value?.draw?.()
+  } else if (mode === 'sideElevation') {
+    sideElevationRef.value?.draw?.()
+  }
 }
 
 // Expose refs for PDF export
@@ -66,8 +88,16 @@ defineExpose({
         "
         @click="settingsStore.toggleSPL()"
         title="Toggle SPL heatmap overlay"
+        :aria-busy="splComputingOnVisibleViews ? 'true' : 'false'"
       >
-        Show SPL
+        <span class="inline-flex items-center gap-2">
+          <span>Show SPL</span>
+          <span
+            v-if="splComputingOnVisibleViews"
+            class="inline-block w-3 h-3 rounded-full border-2 border-neon-green/30 border-t-transparent animate-spin"
+            aria-hidden="true"
+          />
+        </span>
       </button>
     </div>
 
@@ -78,8 +108,16 @@ defineExpose({
         v-if="settingsStore.viewMode === 'split'"
         class="grid grid-rows-2 gap-2 h-full"
       >
-        <TopDownCoverage ref="topDownRef" />
-        <SideElevation ref="sideElevationRef" />
+        <TopDownCoverage
+          ref="topDownRef"
+          @heatmap-start="topComputing = true"
+          @heatmap-end="topComputing = false"
+        />
+        <SideElevation
+          ref="sideElevationRef"
+          @heatmap-start="sideComputing = true"
+          @heatmap-end="sideComputing = false"
+        />
       </div>
 
       <!-- Top Down Only -->
@@ -87,7 +125,11 @@ defineExpose({
         v-else-if="settingsStore.viewMode === 'topDown'"
         class="h-full"
       >
-        <TopDownCoverage ref="topDownRef" />
+        <TopDownCoverage
+          ref="topDownRef"
+          @heatmap-start="topComputing = true"
+          @heatmap-end="topComputing = false"
+        />
       </div>
 
       <!-- Side Elevation Only -->
@@ -95,7 +137,11 @@ defineExpose({
         v-else-if="settingsStore.viewMode === 'sideElevation'"
         class="h-full"
       >
-        <SideElevation ref="sideElevationRef" />
+        <SideElevation
+          ref="sideElevationRef"
+          @heatmap-start="sideComputing = true"
+          @heatmap-end="sideComputing = false"
+        />
       </div>
     </div>
   </div>

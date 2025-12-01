@@ -6,7 +6,7 @@
  * Shows the room layout with SPL heatmap and coverage cones.
  */
 
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoomStore, useSpeakerStore, useSettingsStore } from '@/stores'
 import { useAcoustics, type Point3D } from '@/composables/useAcoustics'
 
@@ -15,10 +15,17 @@ const speakerStore = useSpeakerStore()
 const settingsStore = useSettingsStore()
 const acoustics = useAcoustics()
 
+const emit = defineEmits<{
+  'heatmap-start': []
+  'heatmap-end': []
+}>()
+
 const canvasRef = ref<HTMLCanvasElement | null>(null)
+const overlayRef = ref<HTMLCanvasElement | null>(null)
 const containerRef = ref<HTMLDivElement | null>(null)
 const canvasWidth = ref(600)
 const canvasHeight = ref(400)
+let resizeObserver: ResizeObserver | null = null
 
 // rAF draw scheduler to batch rapid changes
 let rafId: number | null = null
@@ -30,9 +37,22 @@ function requestDraw() {
   })
 }
 
+// Debounce for reactive bursts (sliders/view switches)
+let debounceId: number | null = null
+function requestDrawDebounced(delay = 70) {
+  if (debounceId != null) clearTimeout(debounceId)
+  debounceId = window.setTimeout(() => {
+    requestDraw()
+  }, delay)
+}
+
 // Mouse position for probe tooltip
 const mousePos = ref<{ x: number; y: number } | null>(null)
 const probeData = ref<{ spl: number; distance: number } | null>(null)
+
+// Progressive heatmap state
+const isComputingHeatmap = ref(false)
+let heatmapGeneration = 0
 
 // Convert room coordinates to canvas coordinates
 function toCanvasX(roomX: number): number {
@@ -108,6 +128,10 @@ function draw() {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
 
+  // Clear overlay at the start of a full draw to avoid ghost tooltips
+  const octx = overlayRef.value?.getContext('2d')
+  if (octx) octx.clearRect(0, 0, canvasWidth.value, canvasHeight.value)
+
   const speaker = speakerStore.selectedSpeaker
   if (!speaker) return
 
@@ -120,10 +144,7 @@ function draw() {
     drawGrid(ctx)
   }
 
-  // Draw SPL heatmap (only when enabled)
-  if (settingsStore.showSPL) {
-    drawHeatmap(ctx, speaker)
-  }
+  // Draw base geometry first so it appears above the progressive heatmap background
 
   // Draw room outline
   drawRoomOutline(ctx)
@@ -139,10 +160,20 @@ function draw() {
     drawLegend(ctx)
   }
 
-  // Draw probe tooltip (only when SPL is shown)
-  if (mousePos.value && probeData.value && settingsStore.showProbe && settingsStore.showSPL) {
-    drawProbe(ctx)
+  // Probe tooltip/crosshair is rendered on overlay canvas to avoid full redraws on hover
+
+  // Start/continue progressive heatmap (only when enabled)
+  if (settingsStore.showSPL) {
+    startHeatmap(ctx, speaker)
+  } else {
+    // cancel any in-flight heatmap job
+    if (isComputingHeatmap.value) emit('heatmap-end')
+    heatmapGeneration++
+    isComputingHeatmap.value = false
   }
+
+  // Re-draw probe overlay if we have hover data
+  drawProbeOverlay()
 }
 
 function drawGrid(ctx: CanvasRenderingContext2D) {
@@ -207,38 +238,76 @@ function drawRoomOutline(ctx: CanvasRenderingContext2D) {
   ctx.fillText('STAGE', canvasWidth.value / 2, padding + 15)
 }
 
-function drawHeatmap(ctx: CanvasRenderingContext2D, speaker: any) {
+function startHeatmap(ctx: CanvasRenderingContext2D, speaker: any) {
+  const currentGen = ++heatmapGeneration
+  const wasComputing = isComputingHeatmap.value
+  isComputingHeatmap.value = true
+  if (!wasComputing) emit('heatmap-start')
+
   // Slightly coarser default resolution for better interactivity
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
-  const resolution = Math.max(10, Math.round(12 / Math.min(dpr, 2))) // pixels per grid cell
+  const resolution = Math.max(10, Math.round(12 / Math.min(dpr, 2)))
   const padding = 40
   const listenerHeight = 1.4
-
   const speakerPosition: Point3D = {
     x: roomStore.width / 2,
     y: speakerStore.trimHeight,
     z: 0,
   }
 
-  // Draw heatmap in chunks
-  for (let px = padding; px < canvasWidth.value - padding; px += resolution) {
-    for (let py = padding; py < canvasHeight.value - padding; py += resolution) {
-      const roomX = toRoomX(px + resolution / 2)
-      const roomZ = toRoomY(py + resolution / 2)
+  let px = padding
+  let py = padding
+  const maxX = canvasWidth.value - padding
+  const maxY = canvasHeight.value - padding
 
-      const point: Point3D = { x: roomX, y: listenerHeight, z: roomZ }
-      const result = acoustics.calculateSPLAtPoint(
-        point,
-        speakerPosition,
-        speaker,
-        speakerStore.deployment
-      )
+  // Draw with normal composition so tiles are visible over the cleared background
+  const prevComp = ctx.globalCompositeOperation
+  ctx.globalCompositeOperation = 'source-over'
 
-      const color = getSPLColor(result.spl)
-      ctx.fillStyle = color
-      ctx.fillRect(px, py, resolution, resolution)
+  const step = () => {
+    if (currentGen !== heatmapGeneration) {
+      // aborted
+      ctx.globalCompositeOperation = prevComp
+      isComputingHeatmap.value = false
+      emit('heatmap-end')
+      return
     }
+
+    const frameStart = performance.now()
+    const budget = 14 // ms per frame for SPL tiles
+
+    while (px < maxX) {
+      while (py < maxY) {
+        const roomX = toRoomX(px + resolution / 2)
+        const roomZ = toRoomY(py + resolution / 2)
+        const point: Point3D = { x: roomX, y: listenerHeight, z: roomZ }
+        const result = acoustics.calculateSPLAtPoint(
+          point,
+          speakerPosition,
+          speaker,
+          speakerStore.deployment
+        )
+        ctx.fillStyle = getSPLColor(result.spl)
+        ctx.fillRect(px, py, resolution, resolution)
+
+        py += resolution
+
+        if (performance.now() - frameStart > budget) {
+          requestAnimationFrame(step)
+          return
+        }
+      }
+      py = padding
+      px += resolution
+    }
+
+    // done
+    ctx.globalCompositeOperation = prevComp
+    isComputingHeatmap.value = false
+    emit('heatmap-end')
   }
+
+  requestAnimationFrame(step)
 }
 
 function drawSpeaker(ctx: CanvasRenderingContext2D) {
@@ -335,7 +404,17 @@ function drawLegend(ctx: CanvasRenderingContext2D) {
   ctx.fillText('70dB', legendX + 20, legendY + legendHeight)
 }
 
-function drawProbe(ctx: CanvasRenderingContext2D) {
+function drawProbeOverlay() {
+  const overlay = overlayRef.value
+  if (!overlay) return
+  const ctx = overlay.getContext('2d')
+  if (!ctx) return
+
+  // Clear previous overlay
+  ctx.clearRect(0, 0, canvasWidth.value, canvasHeight.value)
+
+  // Render only when SPL/probe is enabled and we have data
+  if (!settingsStore.showSPL || !settingsStore.showProbe) return
   if (!mousePos.value || !probeData.value) return
 
   const { x, y } = mousePos.value
@@ -351,16 +430,17 @@ function drawProbe(ctx: CanvasRenderingContext2D) {
   if (boxX + boxWidth > canvasWidth.value) boxX = x - boxWidth - 15
   if (boxY < 0) boxY = y + 15
 
-  // Draw background
+  // Draw background box
   ctx.fillStyle = 'rgba(18, 18, 26, 0.95)'
   ctx.strokeStyle = '#2a2a3a'
   ctx.lineWidth = 1
   ctx.beginPath()
+  // @ts-ignore - roundRect is supported in modern browsers
   ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 4)
   ctx.fill()
   ctx.stroke()
 
-  // Draw text
+  // Text
   ctx.fillStyle = '#00ff88'
   ctx.font = 'bold 12px JetBrains Mono, monospace'
   ctx.textAlign = 'left'
@@ -370,7 +450,7 @@ function drawProbe(ctx: CanvasRenderingContext2D) {
   ctx.font = '10px JetBrains Mono, monospace'
   ctx.fillText(`${distance.toFixed(1)}m`, boxX + padding, boxY + 32)
 
-  // Draw crosshair
+  // Crosshair
   ctx.strokeStyle = 'rgba(0, 255, 136, 0.5)'
   ctx.lineWidth = 1
   ctx.beginPath()
@@ -434,13 +514,17 @@ function handleMouseMove(event: MouseEvent) {
     probeData.value = null
   }
 
-  requestDraw()
+  // Update only the overlay on hover to avoid restarting heatmap
+  drawProbeOverlay()
 }
 
 function handleMouseLeave() {
   mousePos.value = null
   probeData.value = null
-  requestDraw()
+  // Clear overlay without touching the base canvas
+  const overlay = overlayRef.value
+  const ctx = overlay?.getContext('2d')
+  if (ctx) ctx.clearRect(0, 0, canvasWidth.value, canvasHeight.value)
 }
 
 function handleResize() {
@@ -448,7 +532,10 @@ function handleResize() {
     canvasWidth.value = containerRef.value.clientWidth
     canvasHeight.value = containerRef.value.clientHeight
   }
-  draw()
+  requestDraw()
+  // Ensure overlay is cleared/synced on resize
+  const ctx = overlayRef.value?.getContext('2d')
+  if (ctx) ctx.clearRect(0, 0, canvasWidth.value, canvasHeight.value)
 }
 
 // Watch for changes and redraw
@@ -463,22 +550,61 @@ watch(
     () => settingsStore.splColorScheme,
   ],
   () => {
-    requestDraw()
+    requestDrawDebounced()
   },
   { deep: true }
 )
 
+// Clear overlay when SPL is toggled off, or re-draw when on and hovering
+watch(
+  () => settingsStore.showSPL,
+  (val) => {
+    const ctx = overlayRef.value?.getContext('2d')
+    if (!val && ctx) ctx.clearRect(0, 0, canvasWidth.value, canvasHeight.value)
+    if (val) drawProbeOverlay()
+  }
+)
+
 onMounted(() => {
   handleResize()
+  // Observe container size changes (including 0 -> actual on tab switch)
+  if ('ResizeObserver' in window && containerRef.value) {
+    resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect
+        if (width > 0 && height > 0 && (width !== canvasWidth.value || height !== canvasHeight.value)) {
+          canvasWidth.value = Math.floor(width)
+          canvasHeight.value = Math.floor(height)
+          requestDraw()
+        }
+      }
+    })
+    resizeObserver.observe(containerRef.value)
+  }
   window.addEventListener('resize', handleResize)
+  // Ensure first draw after mount when DOM has settled
+  nextTick(() => requestDraw())
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  if (resizeObserver) {
+    try { resizeObserver.disconnect() } catch {}
+    resizeObserver = null
+  }
 })
 
-// Expose draw method for PDF export
+// Expose draw method for PDF export and external triggers
 defineExpose({ draw, canvasRef })
+
+// Trigger redraw when view mode changes and this view becomes visible
+watch(
+  () => settingsStore.viewMode,
+  async () => {
+    await nextTick()
+    requestDraw()
+  }
+)
 </script>
 
 <template>
@@ -493,6 +619,15 @@ defineExpose({ draw, canvasRef })
       class="w-full h-full"
       @mousemove="handleMouseMove"
       @mouseleave="handleMouseLeave"
+    />
+
+    <!-- Overlay canvas for probe/crosshair/tooltip (no heavy redraws) -->
+    <canvas
+      ref="overlayRef"
+      :width="canvasWidth"
+      :height="canvasHeight"
+      class="absolute inset-0 w-full h-full pointer-events-none"
+      aria-hidden="true"
     />
 
     <!-- View label -->

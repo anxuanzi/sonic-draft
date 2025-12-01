@@ -6,7 +6,7 @@
  * Shows room depth vs height with SPL distribution and reflection warnings.
  */
 
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoomStore, useSpeakerStore, useSettingsStore } from '@/stores'
 import { useAcoustics, type Point3D } from '@/composables/useAcoustics'
 
@@ -15,10 +15,17 @@ const speakerStore = useSpeakerStore()
 const settingsStore = useSettingsStore()
 const acoustics = useAcoustics()
 
+const emit = defineEmits<{
+  'heatmap-start': []
+  'heatmap-end': []
+}>()
+
 const canvasRef = ref<HTMLCanvasElement | null>(null)
+const overlayRef = ref<HTMLCanvasElement | null>(null)
 const containerRef = ref<HTMLDivElement | null>(null)
 const canvasWidth = ref(600)
 const canvasHeight = ref(300)
+let resizeObserver: ResizeObserver | null = null
 
 // rAF draw scheduler to batch rapid changes
 let rafId: number | null = null
@@ -30,9 +37,20 @@ function requestDraw() {
   })
 }
 
+// Debounce redraws to coalesce rapid reactive changes
+let debounceId: number | null = null
+function requestDrawDebounced(delay = 70) {
+  if (debounceId != null) clearTimeout(debounceId)
+  debounceId = window.setTimeout(() => requestDraw(), delay)
+}
+
 // Mouse position for probe tooltip
 const mousePos = ref<{ x: number; y: number } | null>(null)
 const probeData = ref<{ spl: number; distance: number; height: number } | null>(null)
+
+// Progressive heatmap state
+const isComputingHeatmap = ref(false)
+let heatmapGeneration = 0
 
 // Padding
 const PADDING = 40
@@ -94,6 +112,10 @@ function draw() {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
 
+  // Clear overlay at the start of a full draw to avoid ghost tooltips
+  const octx = overlayRef.value?.getContext('2d')
+  if (octx) octx.clearRect(0, 0, canvasWidth.value, canvasHeight.value)
+
   const speaker = speakerStore.selectedSpeaker
   if (!speaker) return
 
@@ -106,10 +128,7 @@ function draw() {
     drawGrid(ctx)
   }
 
-  // Draw SPL heatmap only when enabled
-  if (settingsStore.showSPL) {
-    drawHeatmap(ctx, speaker)
-  }
+  // Base geometry first
 
   // Draw room outline
   drawRoomOutline(ctx)
@@ -133,10 +152,19 @@ function draw() {
     drawLegend(ctx)
   }
 
-  // Draw probe
-  if (mousePos.value && probeData.value && settingsStore.showProbe) {
-    drawProbe(ctx)
+  // Probe tooltip/crosshair is drawn on the overlay canvas to avoid full redraws
+
+  // Progressive heatmap start/continue
+  if (settingsStore.showSPL) {
+    startHeatmap(ctx, speaker)
+  } else {
+    heatmapGeneration++
+    if (isComputingHeatmap.value) emit('heatmap-end')
+    isComputingHeatmap.value = false
   }
+
+  // Re-draw probe overlay if we have hover data
+  drawProbeOverlay()
 }
 
 function drawGrid(ctx: CanvasRenderingContext2D) {
@@ -213,37 +241,73 @@ function drawRoomOutline(ctx: CanvasRenderingContext2D) {
   ctx.fillText('BACK', canvasWidth.value - PADDING - 30, toCanvasY(0) + 15)
 }
 
-function drawHeatmap(ctx: CanvasRenderingContext2D, speaker: any) {
+function startHeatmap(ctx: CanvasRenderingContext2D, speaker: any) {
+  const currentGen = ++heatmapGeneration
+  const wasComputing = isComputingHeatmap.value
+  isComputingHeatmap.value = true
+  if (!wasComputing) emit('heatmap-start')
+
   // Slightly coarser default resolution for interactivity; account for DPR
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
   const resolution = Math.max(8, Math.round(12 / Math.min(dpr, 2)))
+
   const speakerPosition: Point3D = {
     x: roomStore.width / 2,
     y: speakerStore.trimHeight,
     z: 0,
   }
 
-  // Sample grid (side view shows center slice)
-  for (let px = PADDING; px < canvasWidth.value - PADDING; px += resolution) {
-    for (let py = PADDING; py < canvasHeight.value - PADDING; py += resolution) {
-      const roomZ = toRoomZ(px + resolution / 2)
-      const roomY = toRoomY(py + resolution / 2)
+  let px = PADDING
+  let py = PADDING
+  const maxX = canvasWidth.value - PADDING
+  const maxY = canvasHeight.value - PADDING
 
-      // Only show from floor to ceiling
-      if (roomY < 0 || roomY > roomStore.height) continue
+  // Draw with standard composition so tiles appear over cleared background
+  const prevComp = ctx.globalCompositeOperation
+  ctx.globalCompositeOperation = 'source-over'
 
-      const point: Point3D = { x: roomStore.width / 2, y: roomY, z: roomZ }
-      const result = acoustics.calculateSPLAtPoint(
-        point,
-        speakerPosition,
-        speaker,
-        speakerStore.deployment
-      )
-
-      ctx.fillStyle = getSPLColor(result.spl)
-      ctx.fillRect(px, py, resolution, resolution)
+  const step = () => {
+    if (currentGen !== heatmapGeneration) {
+      ctx.globalCompositeOperation = prevComp
+      isComputingHeatmap.value = false
+      emit('heatmap-end')
+      return
     }
+
+    const start = performance.now()
+    const budget = 14
+
+    while (px < maxX) {
+      while (py < maxY) {
+        const roomZ = toRoomZ(px + resolution / 2)
+        const roomY = toRoomY(py + resolution / 2)
+        if (roomY >= 0 && roomY <= roomStore.height) {
+          const point: Point3D = { x: roomStore.width / 2, y: roomY, z: roomZ }
+          const result = acoustics.calculateSPLAtPoint(
+            point,
+            speakerPosition,
+            speaker,
+            speakerStore.deployment
+          )
+          ctx.fillStyle = getSPLColor(result.spl)
+          ctx.fillRect(px, py, resolution, resolution)
+        }
+        py += resolution
+        if (performance.now() - start > budget) {
+          requestAnimationFrame(step)
+          return
+        }
+      }
+      py = PADDING
+      px += resolution
+    }
+
+    ctx.globalCompositeOperation = prevComp
+    isComputingHeatmap.value = false
+    emit('heatmap-end')
   }
+
+  requestAnimationFrame(step)
 }
 
 function drawSpeaker(ctx: CanvasRenderingContext2D) {
@@ -433,7 +497,16 @@ function drawLegend(ctx: CanvasRenderingContext2D) {
   ctx.fillText('70', legendX + 16, legendY + legendHeight)
 }
 
-function drawProbe(ctx: CanvasRenderingContext2D) {
+function drawProbeOverlay() {
+  const overlay = overlayRef.value
+  if (!overlay) return
+  const ctx = overlay.getContext('2d')
+  if (!ctx) return
+
+  // Clear previous overlay contents
+  ctx.clearRect(0, 0, canvasWidth.value, canvasHeight.value)
+
+  if (!settingsStore.showSPL || !settingsStore.showProbe) return
   if (!mousePos.value || !probeData.value) return
 
   const { x, y } = mousePos.value
@@ -450,6 +523,7 @@ function drawProbe(ctx: CanvasRenderingContext2D) {
   ctx.strokeStyle = '#2a2a3a'
   ctx.lineWidth = 1
   ctx.beginPath()
+  // @ts-ignore
   ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 4)
   ctx.fill()
   ctx.stroke()
@@ -526,13 +600,16 @@ function handleMouseMove(event: MouseEvent) {
     probeData.value = null
   }
 
-  requestDraw()
+  // Update only the overlay to avoid restarting the heatmap
+  drawProbeOverlay()
 }
 
 function handleMouseLeave() {
   mousePos.value = null
   probeData.value = null
-  requestDraw()
+  // Clear overlay
+  const ctx = overlayRef.value?.getContext('2d')
+  if (ctx) ctx.clearRect(0, 0, canvasWidth.value, canvasHeight.value)
 }
 
 function handleResize() {
@@ -540,7 +617,9 @@ function handleResize() {
     canvasWidth.value = containerRef.value.clientWidth
     canvasHeight.value = containerRef.value.clientHeight
   }
-  draw()
+  requestDraw()
+  const ctx = overlayRef.value?.getContext('2d')
+  if (ctx) ctx.clearRect(0, 0, canvasWidth.value, canvasHeight.value)
 }
 
 watch(
@@ -555,21 +634,58 @@ watch(
     () => settingsStore.splColorScheme,
   ],
   () => {
-    requestDraw()
+    requestDrawDebounced()
   },
   { deep: true }
 )
 
+// Clear overlay when SPL is toggled off, or re-draw when on and hovering
+watch(
+  () => settingsStore.showSPL,
+  (val) => {
+    const ctx = overlayRef.value?.getContext('2d')
+    if (!val && ctx) ctx.clearRect(0, 0, canvasWidth.value, canvasHeight.value)
+    if (val) drawProbeOverlay()
+  }
+)
+
 onMounted(() => {
   handleResize()
+  if ('ResizeObserver' in window && containerRef.value) {
+    resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect
+        if (width > 0 && height > 0 && (width !== canvasWidth.value || height !== canvasHeight.value)) {
+          canvasWidth.value = Math.floor(width)
+          canvasHeight.value = Math.floor(height)
+          requestDraw()
+        }
+      }
+    })
+    resizeObserver.observe(containerRef.value)
+  }
   window.addEventListener('resize', handleResize)
+  nextTick(() => requestDraw())
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  if (resizeObserver) {
+    try { resizeObserver.disconnect() } catch {}
+    resizeObserver = null
+  }
 })
 
 defineExpose({ draw, canvasRef })
+
+// Trigger redraw when view mode changes and this view becomes visible
+watch(
+  () => settingsStore.viewMode,
+  async () => {
+    await nextTick()
+    requestDraw()
+  }
+)
 </script>
 
 <template>
@@ -585,6 +701,16 @@ defineExpose({ draw, canvasRef })
       @mousemove="handleMouseMove"
       @mouseleave="handleMouseLeave"
     />
+
+    <!-- Overlay canvas for probe UI -->
+    <canvas
+      ref="overlayRef"
+      :width="canvasWidth"
+      :height="canvasHeight"
+      class="absolute inset-0 w-full h-full pointer-events-none"
+      aria-hidden="true"
+    />
+
 
     <div class="absolute top-2 left-2 px-2 py-1 bg-audio-panel/80 rounded text-xs text-audio-muted">
       Side Elevation

@@ -9,6 +9,7 @@
  */
 
 import { ref } from 'vue'
+import { useSettingsStore } from '@/stores'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import ControlSidebar from '@/components/layout/ControlSidebar.vue'
 import VisualizationPanel from '@/components/canvas/VisualizationPanel.vue'
@@ -16,6 +17,7 @@ import { usePdfExport } from '@/composables/usePdfExport'
 
 const visualizationRef = ref<InstanceType<typeof VisualizationPanel> | null>(null)
 const { exportProposal } = usePdfExport()
+const settingsStore = useSettingsStore()
 
 /**
  * Handle PDF export request.
@@ -39,7 +41,9 @@ async function handleExportPdf() {
     <!-- Main Content -->
     <div class="flex-1 flex overflow-hidden">
       <!-- Control Sidebar -->
-      <ControlSidebar @export-pdf="handleExportPdf" />
+      <transition name="fade" mode="out-in">
+        <ControlSidebar v-show="!settingsStore.sidebarCollapsed" @export-pdf="handleExportPdf" />
+      </transition>
 
       <!-- Visualization Area -->
       <main class="flex-1 bg-audio-bg overflow-hidden">
@@ -48,3 +52,8 @@ async function handleExportPdf() {
     </div>
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active { transition: opacity 150ms ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>

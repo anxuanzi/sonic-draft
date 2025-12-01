@@ -8,14 +8,18 @@
 import { ref } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
 
+import type { Component } from 'vue'
+
 interface Props {
   title: string
   defaultOpen?: boolean
-  icon?: object
+  // Accept any Vue component (object or function)
+  icon?: Component | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   defaultOpen: true,
+  icon: null,
 })
 
 const isOpen = ref(props.defaultOpen)
