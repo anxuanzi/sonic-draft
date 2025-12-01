@@ -38,6 +38,12 @@ const jbl: SpeakerModel[] = [
     compatibleSubs: ['jbl-vtx-b18', 'jbl-vtx-b28'],
     arrayable: true,
     maxArraySize: 16,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 20,
+      minHeight: 2,
+    },
   },
   {
     id: 'jbl-vtx-b28',
@@ -67,6 +73,12 @@ const jbl: SpeakerModel[] = [
     compatibleSubs: [],
     arrayable: true,
     maxArraySize: 12,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 15,
+      minHeight: 0,
+    },
   },
   {
     id: 'jbl-srx910la',
@@ -96,6 +108,12 @@ const jbl: SpeakerModel[] = [
     compatibleSubs: ['jbl-srx928s', 'jbl-srx918s'],
     arrayable: true,
     maxArraySize: 16,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 20,
+      minHeight: 2,
+    },
   },
   {
     id: 'jbl-srx906la',
@@ -125,6 +143,12 @@ const jbl: SpeakerModel[] = [
     compatibleSubs: ['jbl-srx918s', 'jbl-srx928s'],
     arrayable: true,
     maxArraySize: 12,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 20,
+      minHeight: 2,
+    },
   },
   {
     id: 'jbl-srx928s',
@@ -154,6 +178,12 @@ const jbl: SpeakerModel[] = [
     compatibleSubs: [],
     arrayable: true,
     maxArraySize: 8,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 15,
+      minHeight: 0,
+    },
   },
   {
     id: 'jbl-vrx932lap',
@@ -183,6 +213,12 @@ const jbl: SpeakerModel[] = [
     compatibleSubs: ['jbl-vrx918sp'],
     arrayable: true,
     maxArraySize: 6,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 20,
+      minHeight: 2,
+    },
   },
   // Point source examples (JBL)
   {
@@ -213,6 +249,12 @@ const jbl: SpeakerModel[] = [
     },
     compatibleSubs: ['jbl-srx828sp'],
     arrayable: false,
+    mountingOptions: {
+      canFly: false,
+      canGroundStack: true,
+      maxHeight: 3.5,
+      minHeight: 1,
+    },
   },
   {
     id: 'jbl-srx828sp',
@@ -242,6 +284,12 @@ const jbl: SpeakerModel[] = [
     compatibleSubs: [],
     arrayable: true,
     maxArraySize: 4,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 15,
+      minHeight: 0,
+    },
   },
 ]
 

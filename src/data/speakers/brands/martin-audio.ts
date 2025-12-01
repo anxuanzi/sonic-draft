@@ -29,6 +29,12 @@ const martinAudio: SpeakerModel[] = [
     compatibleSubs: ['martin-sx118', 'martin-sxh218'],
     arrayable: true,
     maxArraySize: 24,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 20,
+      minHeight: 2,
+    },
   },
   {
     id: 'martin-wpc',
@@ -54,6 +60,12 @@ const martinAudio: SpeakerModel[] = [
     compatibleSubs: ['martin-sx118'],
     arrayable: true,
     maxArraySize: 16,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 20,
+      minHeight: 2,
+    },
   },
   {
     id: 'martin-wpm',
@@ -79,6 +91,12 @@ const martinAudio: SpeakerModel[] = [
     compatibleSubs: ['martin-sx118'],
     arrayable: true,
     maxArraySize: 16,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 20,
+      minHeight: 2,
+    },
   },
 ]
 

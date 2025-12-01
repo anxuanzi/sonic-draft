@@ -29,6 +29,12 @@ const rcf: SpeakerModel[] = [
     compatibleSubs: ['rcf-sub-9006-as'],
     arrayable: true,
     maxArraySize: 20,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 20,
+      minHeight: 2,
+    },
   },
   {
     id: 'rcf-hdl-30a',
@@ -54,6 +60,12 @@ const rcf: SpeakerModel[] = [
     compatibleSubs: ['rcf-sub-8006-as'],
     arrayable: true,
     maxArraySize: 20,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 20,
+      minHeight: 2,
+    },
   },
   {
     id: 'rcf-hdl-6a',
@@ -79,6 +91,12 @@ const rcf: SpeakerModel[] = [
     compatibleSubs: ['rcf-sub-8006-as'],
     arrayable: true,
     maxArraySize: 16,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 20,
+      minHeight: 2,
+    },
   },
   {
     id: 'rcf-sub-9006-as',
@@ -104,6 +122,12 @@ const rcf: SpeakerModel[] = [
     compatibleSubs: [],
     arrayable: true,
     maxArraySize: 8,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 15,
+      minHeight: 0,
+    },
   },
 ]
 

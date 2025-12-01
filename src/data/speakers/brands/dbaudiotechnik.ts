@@ -29,6 +29,12 @@ const dbaudiotechnik: SpeakerModel[] = [
     compatibleSubs: ['db-v-sub'],
     arrayable: true,
     maxArraySize: 24,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 20,
+      minHeight: 2,
+    },
   },
   {
     id: 'db-v-sub',
@@ -54,6 +60,12 @@ const dbaudiotechnik: SpeakerModel[] = [
     compatibleSubs: [],
     arrayable: true,
     maxArraySize: 10,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 15,
+      minHeight: 0,
+    },
   },
   {
     id: 'db-y8',
@@ -79,6 +91,12 @@ const dbaudiotechnik: SpeakerModel[] = [
     compatibleSubs: ['db-y-sub'],
     arrayable: true,
     maxArraySize: 24,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 20,
+      minHeight: 2,
+    },
   },
   {
     id: 'db-y-sub',
@@ -104,6 +122,12 @@ const dbaudiotechnik: SpeakerModel[] = [
     compatibleSubs: [],
     arrayable: true,
     maxArraySize: 8,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 15,
+      minHeight: 0,
+    },
   },
 ]
 

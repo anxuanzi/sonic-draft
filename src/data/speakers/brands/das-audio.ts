@@ -29,6 +29,12 @@ const dasAudio: SpeakerModel[] = [
     compatibleSubs: ['das-event-218a'],
     arrayable: true,
     maxArraySize: 16,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 20,
+      minHeight: 2,
+    },
   },
 ]
 

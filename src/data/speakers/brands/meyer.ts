@@ -29,6 +29,12 @@ const meyer: SpeakerModel[] = [
     compatibleSubs: ['meyer-1100-lfc', 'meyer-900-lfc'],
     arrayable: true,
     maxArraySize: 24,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 20,
+      minHeight: 2,
+    },
   },
   {
     id: 'meyer-leopard',
@@ -54,6 +60,12 @@ const meyer: SpeakerModel[] = [
     compatibleSubs: ['meyer-900-lfc', 'meyer-750-lfc'],
     arrayable: true,
     maxArraySize: 20,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 20,
+      minHeight: 2,
+    },
   },
   {
     id: 'meyer-lina',
@@ -80,6 +92,12 @@ const meyer: SpeakerModel[] = [
     compatibleSubs: ['meyer-750-lfc'],
     arrayable: true,
     maxArraySize: 16,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 20,
+      minHeight: 2,
+    },
   },
   {
     id: 'meyer-1100-lfc',
@@ -105,6 +123,12 @@ const meyer: SpeakerModel[] = [
     compatibleSubs: [],
     arrayable: true,
     maxArraySize: 12,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 15,
+      minHeight: 0,
+    },
   },
   {
     id: 'meyer-ultra-x40',
@@ -129,6 +153,12 @@ const meyer: SpeakerModel[] = [
     },
     compatibleSubs: ['meyer-750-lfc'],
     arrayable: false,
+    mountingOptions: {
+      canFly: false,
+      canGroundStack: true,
+      maxHeight: 3.5,
+      minHeight: 1,
+    },
   },
 ]
 

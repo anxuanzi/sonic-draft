@@ -155,6 +155,46 @@ export const useSpeakerStore = defineStore('speaker', () => {
     trimHeight.value + arrayHeight.value
   )
 
+  /** Mounting options for the selected speaker */
+  const mountingOptions = computed(() => selectedSpeaker.value?.mountingOptions)
+
+  /** Whether the speaker can be flown (rigged) */
+  const canFly = computed(() => mountingOptions.value?.canFly ?? true)
+
+  /** Whether the speaker can be ground-stacked or pole-mounted */
+  const canGroundStack = computed(() => mountingOptions.value?.canGroundStack ?? true)
+
+  /** Maximum deployment height based on speaker type */
+  const maxDeploymentHeight = computed(() => {
+    const speakerMax = mountingOptions.value?.maxHeight ?? 20
+    return Math.min(speakerMax, roomStore.height - 1)
+  })
+
+  /** Minimum deployment height based on speaker type */
+  const minDeploymentHeight = computed(() =>
+    mountingOptions.value?.minHeight ?? 2
+  )
+
+  /** Whether tilt is fixed for this speaker */
+  const hasFixedTilt = computed(() =>
+    mountingOptions.value?.fixedTilt !== undefined
+  )
+
+  /** Fixed tilt value (if applicable) */
+  const fixedTiltValue = computed(() =>
+    mountingOptions.value?.fixedTilt
+  )
+
+  /** Whether this is a column with asymmetrical coverage */
+  const isAsymmetrical = computed(() =>
+    mountingOptions.value?.isAsymmetrical ?? false
+  )
+
+  /** Label for height control based on speaker type */
+  const heightControlLabel = computed(() =>
+    canFly.value ? 'Trim Height' : 'Stand/Pole Height'
+  )
+
   // ============================================
   // Actions
   // ============================================
@@ -212,16 +252,23 @@ export const useSpeakerStore = defineStore('speaker', () => {
   }
 
   /**
-   * Set the trim height.
+   * Set the trim height, respecting speaker mounting constraints.
    */
   function setTrimHeight(value: number) {
-    trimHeight.value = Math.max(2, Math.min(roomStore.height - 1, value))
+    const min = minDeploymentHeight.value
+    const max = maxDeploymentHeight.value
+    trimHeight.value = Math.max(min, Math.min(max, value))
   }
 
   /**
-   * Set the tilt angle.
+   * Set the tilt angle, respecting fixed tilt constraints.
    */
   function setTiltAngle(value: number) {
+    // If tilt is fixed, don't allow changes
+    if (hasFixedTilt.value && fixedTiltValue.value !== undefined) {
+      tiltAngle.value = fixedTiltValue.value
+      return
+    }
     tiltAngle.value = Math.max(-15, Math.min(45, value))
   }
 
@@ -307,9 +354,14 @@ export const useSpeakerStore = defineStore('speaker', () => {
   }
 
   /**
-   * Suggest optimal trim height based on room.
+   * Suggest optimal trim height based on room and speaker constraints.
    */
   function suggestTrimHeight() {
+    // For non-flyable systems, suggest max stand height
+    if (!canFly.value) {
+      setTrimHeight(maxDeploymentHeight.value)
+      return
+    }
     // Rule of thumb: trim height should be about 60-70% of room height
     const suggested = roomStore.height * 0.65
     setTrimHeight(Math.round(suggested * 2) / 2) // Round to nearest 0.5m
@@ -319,8 +371,39 @@ export const useSpeakerStore = defineStore('speaker', () => {
   watch(
     () => roomStore.height,
     (newHeight) => {
-      if (trimHeight.value > newHeight - 1) {
-        trimHeight.value = Math.max(2, newHeight - 1)
+      const max = Math.min(maxDeploymentHeight.value, newHeight - 1)
+      if (trimHeight.value > max) {
+        trimHeight.value = Math.max(minDeploymentHeight.value, max)
+      }
+    }
+  )
+
+  // Watch for speaker changes and adjust constraints
+  watch(
+    () => selectedSpeaker.value,
+    (newSpeaker) => {
+      if (!newSpeaker) return
+
+      const mounting = newSpeaker.mountingOptions
+
+      // Auto-adjust trim height if it exceeds the new max
+      const maxHeight = Math.min(mounting.maxHeight, roomStore.height - 1)
+      const minHeight = mounting.minHeight ?? 2
+      if (trimHeight.value > maxHeight) {
+        trimHeight.value = maxHeight
+      }
+      if (trimHeight.value < minHeight) {
+        trimHeight.value = minHeight
+      }
+
+      // Apply fixed tilt if defined
+      if (mounting.fixedTilt !== undefined) {
+        tiltAngle.value = mounting.fixedTilt
+      }
+
+      // For columns/non-arrayable, set quantity to 1
+      if (!newSpeaker.arrayable) {
+        quantity.value = 1
       }
     }
   )
@@ -355,6 +438,16 @@ export const useSpeakerStore = defineStore('speaker', () => {
     hasCeilingReflection,
     arrayHeight,
     topOfArrayHeight,
+    // Mounting options
+    mountingOptions,
+    canFly,
+    canGroundStack,
+    maxDeploymentHeight,
+    minDeploymentHeight,
+    hasFixedTilt,
+    fixedTiltValue,
+    isAsymmetrical,
+    heightControlLabel,
 
     // Actions
     selectSpeaker,

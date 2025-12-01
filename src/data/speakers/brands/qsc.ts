@@ -30,6 +30,12 @@ const qsc: SpeakerModel[] = [
     compatibleSubs: ['qsc-ls118', 'qsc-ks118'],
     arrayable: true,
     maxArraySize: 6,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 20,
+      minHeight: 2,
+    },
   },
   {
     id: 'qsc-la108',
@@ -56,6 +62,12 @@ const qsc: SpeakerModel[] = [
     compatibleSubs: ['qsc-ls118', 'qsc-ks118'],
     arrayable: true,
     maxArraySize: 6,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 20,
+      minHeight: 2,
+    },
   },
   {
     id: 'qsc-ls118',
@@ -82,6 +94,12 @@ const qsc: SpeakerModel[] = [
     compatibleSubs: [],
     arrayable: true,
     maxArraySize: 4,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 15,
+      minHeight: 0,
+    },
   },
 ]
 

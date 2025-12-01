@@ -38,9 +38,26 @@ export interface SpeakerSpecs {
   /**
    * Vertical dispersion angle in degrees.
    * Represents the -6dB coverage angle in the vertical plane.
+   * For symmetrical speakers, this is the total angle.
    * @example 20 // Narrow 20-degree vertical coverage
    */
   vertDispersion: number
+
+  /**
+   * Vertical dispersion upward from axis in degrees (optional).
+   * For asymmetrical column speakers that project downward.
+   * If not specified, uses symmetrical dispersion (vertDispersion / 2).
+   * @example 0 // No upward dispersion
+   */
+  vertDispersionUp?: number
+
+  /**
+   * Vertical dispersion downward from axis in degrees (optional).
+   * For asymmetrical column speakers that project downward.
+   * If not specified, uses symmetrical dispersion (vertDispersion / 2).
+   * @example 40 // 40° downward coverage
+   */
+  vertDispersionDown?: number
 
   /**
    * Maximum SPL (Sound Pressure Level) in dB at 1 meter.
@@ -101,6 +118,53 @@ export interface SpeakerPricing {
    * @example "USD"
    */
   currency: string
+}
+
+/**
+ * Mounting and deployment options for a speaker model.
+ * Defines what physical configurations are possible.
+ */
+export interface MountingOptions {
+  /**
+   * Whether this speaker can be flown (hung from rigging).
+   * Typically true for line arrays, false for portable systems.
+   * @example true // Line array can be flown
+   */
+  canFly: boolean
+
+  /**
+   * Whether this speaker can be ground-stacked or pole-mounted.
+   * Typically true for portable systems, columns, point sources.
+   * @example true // Can be placed on stand/pole
+   */
+  canGroundStack: boolean
+
+  /**
+   * Maximum deployment height in meters.
+   * For flown systems: typically 20m or more.
+   * For stand/pole mounted: typically 2-3.5m.
+   * @example 20 // Can fly up to 20m
+   */
+  maxHeight: number
+
+  /**
+   * Minimum deployment height in meters.
+   * @example 2 // Minimum trim height of 2m
+   */
+  minHeight?: number
+
+  /**
+   * If defined, locks the tilt angle to this value.
+   * Columns typically have fixed geometry (0°).
+   * @example 0 // Fixed at 0° tilt
+   */
+  fixedTilt?: number
+
+  /**
+   * Whether this is a column/line source with asymmetrical vertical coverage.
+   * If true, sound projects downward but not upward.
+   */
+  isAsymmetrical?: boolean
 }
 
 /**
@@ -199,6 +263,12 @@ export interface SpeakerModel {
    * Maximum number of units in an array (if applicable).
    */
   maxArraySize?: number
+
+  /**
+   * Mounting and deployment options.
+   * Defines physical installation constraints.
+   */
+  mountingOptions: MountingOptions
 }
 
 /**

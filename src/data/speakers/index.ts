@@ -22,6 +22,7 @@ export {
   type SpeakerSpecs,
   type SpeakerPricing,
   type SpeakerMeta,
+  type MountingOptions,
   type SpeakerModel,
   type SpeakerDeployment,
   type DeploymentMode,

@@ -15,6 +15,7 @@ import {
   Download,
   Wand2,
   Radio,
+  Lock,
 } from 'lucide-vue-next'
 import { useRoomStore, useSpeakerStore } from '@/stores'
 import { SpeakerType, type DeploymentMode, getUniqueBrands } from '@/data/speakers'
@@ -195,7 +196,9 @@ function resetAll() {
             </div>
           </div>
 
+          <!-- Quantity (only for arrayable speakers) -->
           <NumberInput
+            v-if="speakerStore.selectedSpeaker?.arrayable"
             :model-value="speakerStore.quantity"
             :min="1"
             :max="speakerStore.maxArraySize"
@@ -244,24 +247,38 @@ function resetAll() {
             @update:model-value="speakerStore.setArraySpread"
           />
 
+          <!-- Height Control (label changes based on speaker type) -->
           <SliderInput
             :model-value="speakerStore.trimHeight"
-            :min="2"
-            :max="roomStore.height - 1"
+            :min="speakerStore.minDeploymentHeight"
+            :max="speakerStore.maxDeploymentHeight"
             :step="0.1"
-            label="Trim Height"
+            :label="speakerStore.heightControlLabel"
             unit="m"
             @update:model-value="speakerStore.setTrimHeight"
           />
-          <SliderInput
-            :model-value="speakerStore.tiltAngle"
-            :min="-15"
-            :max="45"
-            :step="0.5"
-            label="Tilt Angle"
-            unit="°"
-            @update:model-value="speakerStore.setTiltAngle"
-          />
+
+          <!-- Tilt Angle (disabled for fixed geometry systems) -->
+          <div class="space-y-1">
+            <div class="flex items-center justify-between">
+              <label class="text-xs text-audio-muted">Tilt Angle</label>
+              <div v-if="speakerStore.hasFixedTilt" class="flex items-center gap-1 text-xs text-audio-muted">
+                <Lock class="w-3 h-3" />
+                <span>Fixed</span>
+              </div>
+            </div>
+            <SliderInput
+              :model-value="speakerStore.tiltAngle"
+              :min="-15"
+              :max="45"
+              :step="0.5"
+              label=""
+              unit="°"
+              :disabled="speakerStore.hasFixedTilt"
+              :class="{ 'opacity-50 pointer-events-none': speakerStore.hasFixedTilt }"
+              @update:model-value="speakerStore.setTiltAngle"
+            />
+          </div>
           <SliderInput
             :model-value="speakerStore.horizontalAim"
             :min="-45"
@@ -291,6 +308,7 @@ function resetAll() {
           <!-- Auto-calculate buttons -->
           <div class="flex gap-2">
             <button
+              v-if="!speakerStore.hasFixedTilt"
               class="flex-1 px-2 py-1.5 text-xs bg-audio-surface border border-audio-border rounded hover:border-neon-blue/50 transition-colors flex items-center justify-center gap-1"
               @click="speakerStore.autoCalculateTilt"
             >
@@ -302,8 +320,22 @@ function resetAll() {
               @click="speakerStore.suggestTrimHeight"
             >
               <Wand2 class="w-3 h-3" />
-              Suggest Height
+              {{ speakerStore.canFly ? 'Suggest Height' : 'Max Stand Height' }}
             </button>
+          </div>
+
+          <!-- Non-flyable system indicator -->
+          <div
+            v-if="!speakerStore.canFly"
+            class="p-2 bg-neon-blue/10 border border-neon-blue/30 rounded-md text-xs text-neon-blue"
+          >
+            <div class="flex items-center gap-1.5">
+              <Lock class="w-3 h-3" />
+              <span class="font-medium">Ground-Supported System</span>
+            </div>
+            <p class="mt-1 text-audio-muted">
+              Max stand height: {{ speakerStore.maxDeploymentHeight.toFixed(1) }}m
+            </p>
           </div>
         </div>
       </Accordion>

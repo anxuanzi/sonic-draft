@@ -28,6 +28,12 @@ const electrovoice: SpeakerModel[] = [
     },
     compatibleSubs: ['ev-etx-18sp', 'ev-etx-15sp'],
     arrayable: false,
+    mountingOptions: {
+      canFly: false,
+      canGroundStack: true,
+      maxHeight: 3.5,
+      minHeight: 1,
+    },
   },
   {
     id: 'ev-etx-18sp',
@@ -53,6 +59,12 @@ const electrovoice: SpeakerModel[] = [
     compatibleSubs: [],
     arrayable: true,
     maxArraySize: 4,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 15,
+      minHeight: 0,
+    },
   },
 ]
 

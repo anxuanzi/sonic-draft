@@ -29,6 +29,12 @@ const nexo: SpeakerModel[] = [
     compatibleSubs: ['nexo-msub15'],
     arrayable: true,
     maxArraySize: 12,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 20,
+      minHeight: 2,
+    },
   },
 ]
 

@@ -9,9 +9,10 @@ What you edit most of the time:
 
 ## How the database works
 
-- Each brand file exports a default array of items using the same fields: `id`, `brand`, `model`, `type`, `specs`, `pricing`, `meta`, `compatibleSubs`, and array flags.
+- Each brand file exports a default array of items using the same fields: `id`, `brand`, `model`, `type`, `specs`, `pricing`, `meta`, `compatibleSubs`, array flags, and `mountingOptions`.
 - The file `database.ts` is an aggregator. It imports all brand arrays and concatenates them into the single `speakerDatabase` that the rest of the app uses.
 - Types live in `types.ts` and keep the data consistent. If unsure about a field, copy an existing item and edit only the values you understand.
+- **Mounting options** define physical installation constraints (can it be flown? ground-stacked? max height?).
 
 
 ## Edit a brand file (non‑coders welcome)
@@ -25,7 +26,9 @@ What you edit most of the time:
    - `type`: one of `SpeakerType.LineArray`, `SpeakerType.PointSource`, `SpeakerType.Column`, or `SpeakerType.Subwoofer`
    - `specs`:
      - `horzDispersion` (degrees)
-     - `vertDispersion` (degrees)
+     - `vertDispersion` (degrees) — total vertical coverage angle
+     - `vertDispersionUp` (degrees, optional) — for asymmetrical speakers (e.g., columns that project downward), upward coverage (often 0–10°)
+     - `vertDispersionDown` (degrees, optional) — downward coverage for asymmetrical speakers (often 30–50°)
      - `maxSPL` (dB @1m)
      - `couplingCoefficient` (0–1; line arrays/columns usually 0.85–0.98)
      - `frequencyRange.low` and `frequencyRange.high` (Hz)
@@ -42,8 +45,23 @@ What you edit most of the time:
      - `link` (official product page)
    - `compatibleSubs`: array of subwoofer ids that pair well with this speaker
    - `arrayable` and `maxArraySize` for line arrays/sub arrays
+   - `mountingOptions` (required):
+     - `canFly` (boolean) — true if the speaker can be flown (rigged from ceiling/truss)
+     - `canGroundStack` (boolean) — true if the speaker can be placed on floor/stand/pole
+     - `maxHeight` (meters) — maximum deployment height (e.g., 20m for flown, 2.5m for stands)
+     - `minHeight` (meters, optional) — minimum deployment height
+     - `fixedTilt` (degrees, optional) — if set, locks tilt to this value (e.g., 0 for columns)
+     - `isAsymmetrical` (boolean, optional) — true for column speakers with asymmetrical vertical coverage
 
-That’s it. Save the file. The app will pick it up automatically.
+   **Mounting Options by Speaker Type (guidelines):**
+   | Type | canFly | canGroundStack | maxHeight | fixedTilt | isAsymmetrical |
+   |------|--------|----------------|-----------|-----------|----------------|
+   | Line Array | `true` | `true` | 20 | — | — |
+   | Point Source | `false` | `true` | 3.5 | — | — |
+   | Column | `false` | `true` | 2.5 | 0 | `true` |
+   | Subwoofer | `true` | `true` | 15 | — | — |
+
+That's it. Save the file. The app will pick it up automatically.
 
 
 ## Add a new brand
@@ -100,7 +118,15 @@ Instructions:
       },
       "compatibleSubs": ["optional-sub-id-1", "optional-sub-id-2"],
       "arrayable": BOOLEAN,
-      "maxArraySize": NUMBER
+      "maxArraySize": NUMBER,
+      "mountingOptions": {
+        "canFly": BOOLEAN,
+        "canGroundStack": BOOLEAN,
+        "maxHeight": NUMBER,
+        "minHeight": NUMBER,
+        "fixedTilt": NUMBER_OR_OMIT,
+        "isAsymmetrical": BOOLEAN_OR_OMIT
+      }
     }
   ],
   "notes": ["Any brief assumptions/verification notes"]

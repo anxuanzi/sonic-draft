@@ -314,34 +314,89 @@ function drawSpeaker(ctx: CanvasRenderingContext2D) {
   const speakerX = PADDING + 15
   const speakerY = toCanvasY(speakerStore.trimHeight)
   const arrayHeight = speakerStore.arrayHeight
+  const floorY = toCanvasY(0)
+  const canFly = speakerStore.canFly
 
-  // Draw array bracket
-  ctx.strokeStyle = '#00ff88'
-  ctx.lineWidth = 3
-  ctx.beginPath()
-  ctx.moveTo(speakerX, speakerY)
-  ctx.lineTo(speakerX, toCanvasY(speakerStore.trimHeight + arrayHeight))
-  ctx.stroke()
+  // Draw stand/pole for ground-supported systems
+  if (!canFly) {
+    // Draw pole/stand from floor to bottom of speaker
+    ctx.strokeStyle = '#6a6a7a'
+    ctx.lineWidth = 4
+    ctx.beginPath()
+    ctx.moveTo(speakerX, floorY)
+    ctx.lineTo(speakerX, speakerY)
+    ctx.stroke()
 
-  // Draw individual elements
+    // Draw base plate
+    ctx.fillStyle = '#4a4a5a'
+    ctx.fillRect(speakerX - 10, floorY - 4, 20, 8)
+
+    // Draw pole bracket at top
+    ctx.fillStyle = '#6a6a7a'
+    ctx.fillRect(speakerX - 6, speakerY - 2, 12, 6)
+
+    // Stand indicator label
+    ctx.fillStyle = '#6a6a7a'
+    ctx.font = '9px JetBrains Mono, monospace'
+    ctx.textAlign = 'left'
+    ctx.fillText('STAND', speakerX + 15, (speakerY + floorY) / 2)
+  }
+
+  // Draw array bracket (rigging line for flown systems)
+  if (canFly) {
+    ctx.strokeStyle = '#00ff88'
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.moveTo(speakerX, speakerY)
+    ctx.lineTo(speakerX, toCanvasY(speakerStore.trimHeight + arrayHeight))
+    ctx.stroke()
+
+    // Draw rigging point indicator at ceiling
+    const ceilingY = toCanvasY(roomStore.height)
+    ctx.strokeStyle = 'rgba(0, 255, 136, 0.3)'
+    ctx.lineWidth = 1
+    ctx.setLineDash([4, 4])
+    ctx.beginPath()
+    ctx.moveTo(speakerX, ceilingY)
+    ctx.lineTo(speakerX, toCanvasY(speakerStore.topOfArrayHeight))
+    ctx.stroke()
+    ctx.setLineDash([])
+
+    // Rigging point circle
+    ctx.fillStyle = 'rgba(0, 255, 136, 0.5)'
+    ctx.beginPath()
+    ctx.arc(speakerX, ceilingY + 5, 4, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  // Draw individual speaker elements
   const elementCount = speakerStore.quantity
-  const elementSpacing = (toCanvasY(speakerStore.trimHeight) - toCanvasY(speakerStore.trimHeight + arrayHeight)) / elementCount
+  const elementSpacing = elementCount > 1
+    ? (toCanvasY(speakerStore.trimHeight) - toCanvasY(speakerStore.trimHeight + arrayHeight)) / elementCount
+    : 0
 
   ctx.fillStyle = '#00ff88'
   for (let i = 0; i < elementCount; i++) {
     const elemY = speakerY - i * elementSpacing
-    ctx.fillRect(speakerX - 4, elemY - 3, 12, 6)
+    // Draw larger box for non-flyable (typically single unit)
+    if (!canFly && elementCount === 1) {
+      ctx.fillRect(speakerX - 6, elemY - 10, 16, 20)
+    } else {
+      ctx.fillRect(speakerX - 4, elemY - 3, 12, 6)
+    }
   }
 
-  // Trim height label
+  // Height label
   ctx.fillStyle = '#00ff88'
   ctx.font = '10px JetBrains Mono, monospace'
   ctx.textAlign = 'left'
   ctx.fillText(`${speakerStore.trimHeight.toFixed(1)}m`, speakerX + 15, speakerY + 4)
 
-  // Top of array label
-  ctx.fillStyle = '#6a6a7a'
-  ctx.fillText(`${speakerStore.topOfArrayHeight.toFixed(1)}m`, speakerX + 15, toCanvasY(speakerStore.topOfArrayHeight) + 4)
+  // Top of array/speaker label
+  if (elementCount > 1 || canFly) {
+    ctx.fillStyle = '#6a6a7a'
+    ctx.fillText(`${speakerStore.topOfArrayHeight.toFixed(1)}m`, speakerX + 15, toCanvasY(speakerStore.topOfArrayHeight) + 4)
+  }
 }
 
 function drawCoverageCone(ctx: CanvasRenderingContext2D, speaker: any) {

@@ -29,6 +29,12 @@ const lacoustics: SpeakerModel[] = [
     compatibleSubs: ['lacoustics-ks28'],
     arrayable: true,
     maxArraySize: 24,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 20,
+      minHeight: 2,
+    },
   },
   {
     id: 'lacoustics-kara-ii',
@@ -54,6 +60,12 @@ const lacoustics: SpeakerModel[] = [
     compatibleSubs: ['lacoustics-sb18', 'lacoustics-ks21'],
     arrayable: true,
     maxArraySize: 24,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 20,
+      minHeight: 2,
+    },
   },
   {
     id: 'lacoustics-a15-focus',
@@ -79,6 +91,12 @@ const lacoustics: SpeakerModel[] = [
     compatibleSubs: ['lacoustics-ks21'],
     arrayable: true,
     maxArraySize: 8,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 20,
+      minHeight: 2,
+    },
   },
   {
     id: 'lacoustics-ks28',
@@ -104,6 +122,12 @@ const lacoustics: SpeakerModel[] = [
     compatibleSubs: [],
     arrayable: true,
     maxArraySize: 12,
+    mountingOptions: {
+      canFly: true,
+      canGroundStack: true,
+      maxHeight: 15,
+      minHeight: 0,
+    },
   },
 ]
 

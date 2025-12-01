@@ -210,22 +210,58 @@ export function useAcoustics() {
   }
 
   /**
+   * Calculate vertical off-axis attenuation for asymmetrical coverage patterns.
+   * Used for column speakers that project downward but not upward.
+   *
+   * @param vertAngle - Vertical off-axis angle in degrees (positive = above axis, negative = below)
+   * @param vertDispersionUp - Coverage angle above axis (0 for full asymmetry)
+   * @param vertDispersionDown - Coverage angle below axis
+   * @returns Attenuation in dB
+   */
+  function getAsymmetricalVertAttenuation(
+    vertAngle: number,
+    vertDispersionUp: number,
+    vertDispersionDown: number
+  ): number {
+    // Positive angle = listener above the speaker axis (sound going up)
+    // Negative angle = listener below the speaker axis (sound going down)
+    if (vertAngle > 0) {
+      // Above axis - use upward dispersion (typically very narrow or 0)
+      return getOffAxisAttenuation(vertAngle, vertDispersionUp * 2) // *2 because getOffAxisAttenuation expects full coverage angle
+    } else {
+      // Below axis - use downward dispersion
+      return getOffAxisAttenuation(Math.abs(vertAngle), vertDispersionDown * 2)
+    }
+  }
+
+  /**
    * Calculate combined horizontal and vertical off-axis attenuation.
    *
    * @param horzAngle - Horizontal off-axis angle in degrees
    * @param vertAngle - Vertical off-axis angle in degrees
    * @param horzDispersion - Horizontal coverage angle
-   * @param vertDispersion - Vertical coverage angle
+   * @param vertDispersion - Vertical coverage angle (total, for symmetrical sources)
+   * @param vertDispersionUp - Optional: upward vertical coverage for asymmetrical sources
+   * @param vertDispersionDown - Optional: downward vertical coverage for asymmetrical sources
    * @returns Combined attenuation in dB
    */
   function getCombinedAttenuation(
     horzAngle: number,
     vertAngle: number,
     horzDispersion: number,
-    vertDispersion: number
+    vertDispersion: number,
+    vertDispersionUp?: number,
+    vertDispersionDown?: number
   ): number {
     const horzAtten = getOffAxisAttenuation(horzAngle, horzDispersion)
-    const vertAtten = getOffAxisAttenuation(vertAngle, vertDispersion)
+
+    // Use asymmetrical vertical attenuation if specified
+    let vertAtten: number
+    if (vertDispersionUp !== undefined && vertDispersionDown !== undefined) {
+      vertAtten = getAsymmetricalVertAttenuation(vertAngle, vertDispersionUp, vertDispersionDown)
+    } else {
+      vertAtten = getOffAxisAttenuation(vertAngle, vertDispersion)
+    }
 
     // Combine using power sum (more accurate than simple addition)
     // This accounts for the fact that both angles affect coverage
@@ -392,18 +428,24 @@ export function useAcoustics() {
       baseSPL = calculateInverseSquare(dist, speaker.specs.maxSPL)
     }
 
-    // Calculate off-axis attenuation
+    // Calculate off-axis attenuation (handle asymmetrical vertical coverage)
     const attenuation = getCombinedAttenuation(
       horzAngle,
       vertAngle,
       speaker.specs.horzDispersion,
-      speaker.specs.vertDispersion
+      speaker.specs.vertDispersion,
+      speaker.specs.vertDispersionUp,
+      speaker.specs.vertDispersionDown
     )
 
-    // Check if within coverage
+    // Check if within coverage (account for asymmetrical patterns)
+    const vertUp = speaker.specs.vertDispersionUp ?? speaker.specs.vertDispersion / 2
+    const vertDown = speaker.specs.vertDispersionDown ?? speaker.specs.vertDispersion / 2
+    const inVertCoverage = vertAngle > 0
+      ? vertAngle <= vertUp
+      : Math.abs(vertAngle) <= vertDown
     const inCoverage =
-      horzAngle <= speaker.specs.horzDispersion / 2 &&
-      vertAngle <= speaker.specs.vertDispersion / 2
+      horzAngle <= speaker.specs.horzDispersion / 2 && inVertCoverage
 
     return {
       spl: baseSPL + attenuation,
