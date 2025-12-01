@@ -17,10 +17,11 @@ import {
   Radio,
 } from 'lucide-vue-next'
 import { useRoomStore, useSpeakerStore } from '@/stores'
-import { SpeakerType, type DeploymentMode } from '@/data/speakers'
+import { SpeakerType, type DeploymentMode, getUniqueBrands } from '@/data/speakers'
 import Accordion from '@/components/ui/Accordion.vue'
 import SliderInput from '@/components/ui/SliderInput.vue'
 import SelectInput from '@/components/ui/SelectInput.vue'
+import SpeakerSelect from '@/components/ui/SpeakerSelect.vue'
 import NumberInput from '@/components/ui/NumberInput.vue'
 import TextInput from '@/components/ui/TextInput.vue'
 
@@ -31,14 +32,8 @@ const emit = defineEmits<{
   exportPdf: []
 }>()
 
-// Format speaker options for select
-const speakerOptions = computed(() =>
-  speakerStore.availableSpeakers.map((s) => ({
-    value: s.id,
-    label: `${s.brand} ${s.model}`,
-    sublabel: getSpeakerTypeLabel(s.type),
-  }))
-)
+// Get unique brands for filtering
+const uniqueBrands = computed(() => getUniqueBrands())
 
 // Format subwoofer options
 const subwooferOptions = computed(() => [
@@ -174,9 +169,10 @@ function resetAll() {
       <!-- Speaker Selection -->
       <Accordion title="Speaker System" :icon="Speaker">
         <div class="space-y-3">
-          <SelectInput
+          <SpeakerSelect
             :model-value="speakerStore.selectedSpeakerId"
-            :options="speakerOptions"
+            :speakers="speakerStore.availableSpeakers"
+            :brands="uniqueBrands"
             label="Main Speaker"
             @update:model-value="handleSpeakerChange"
           />
