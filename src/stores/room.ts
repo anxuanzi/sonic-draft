@@ -35,6 +35,12 @@ export const useRoomStore = defineStore('room', () => {
   /** Room height in meters */
   const height = ref(6)
 
+  /** Distance from stage to audience in meters */
+  const audienceStart = ref(2)
+
+  /** Ear height in meters */
+  const earHeight = ref(1.4)
+
   /** Project/venue name */
   const projectName = ref('Untitled Project')
 
@@ -109,6 +115,22 @@ export const useRoomStore = defineStore('room', () => {
   }
 
   /**
+   * Update distance from stage to audience.
+   * @param value - New distance from stage to audience in meters (clamped to 0-10m)
+   */
+  function setAudienceStart(value: number) {
+    audienceStart.value = Math.max(0, Math.min(10, value))
+  }
+
+  /**
+   * Update ear height.
+   * @param value - New ear height in meters (clamped to 0.5-3m)
+   */
+  function setEarHeight(value: number) {
+    earHeight.value = Math.max(0.5, Math.min(3, value))
+  }
+
+  /**
    * Update project name.
    */
   function setProjectName(name: string) {
@@ -136,6 +158,8 @@ export const useRoomStore = defineStore('room', () => {
     width.value = 15
     depth.value = 20
     height.value = 6
+    audienceStart.value = 2
+    earHeight.value = 1.4
     projectName.value = 'Untitled Project'
     venueName.value = ''
     notes.value = ''
@@ -160,6 +184,8 @@ export const useRoomStore = defineStore('room', () => {
     width,
     depth,
     height,
+    audienceStart,
+    earHeight,
     projectName,
     venueName,
     notes,
@@ -176,6 +202,8 @@ export const useRoomStore = defineStore('room', () => {
     setDepth,
     setHeight,
     setDimensions,
+    setAudienceStart,
+    setEarHeight,
     setProjectName,
     setVenueName,
     setNotes,

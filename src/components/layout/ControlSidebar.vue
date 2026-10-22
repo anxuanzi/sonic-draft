@@ -140,6 +140,24 @@ function resetAll() {
             unit="m"
             @update:model-value="roomStore.setHeight"
           />
+          <SliderInput
+            :model-value="roomStore.audienceStart"
+            :min="0"
+            :max="10"
+            :step="0.5"
+            label="Distance from stage to audience"
+            unit="m"
+            @update:model-value="roomStore.setAudienceStart"
+          />
+          <SliderInput
+            :model-value="roomStore.earHeight"
+            :min="0.5"
+            :max="3"
+            :step="0.1"
+            label="Ear Height"
+            unit="m"
+            @update:model-value="roomStore.setEarHeight"
+          />
 
           <!-- Room Stats -->
           <div class="mt-4 p-2 bg-audio-surface rounded-md">

@@ -492,10 +492,10 @@ function drawReflectionWarning(ctx: CanvasRenderingContext2D, speaker: any) {
 }
 
 function drawAudienceArea(ctx: CanvasRenderingContext2D) {
-  const audienceStart = toCanvasX(2) // 2m from stage
+  const audienceStart = toCanvasX(roomStore.audienceStart)
   const audienceEnd = toCanvasX(roomStore.depth - 1) // 1m from back
   const floorY = toCanvasY(0)
-  const earHeight = toCanvasY(1.4) // Ear height
+  const earHeight = toCanvasY(roomStore.earHeight)
 
   // Audience zone
   ctx.fillStyle = 'rgba(0, 170, 255, 0.1)'
@@ -515,7 +515,7 @@ function drawAudienceArea(ctx: CanvasRenderingContext2D) {
   ctx.fillStyle = '#4a4a5a'
   ctx.font = '9px JetBrains Mono, monospace'
   ctx.textAlign = 'left'
-  ctx.fillText('Ear Height 1.4m', audienceEnd + 5, earHeight + 3)
+  ctx.fillText('Ear Height', audienceEnd + 5, earHeight + 3)
 }
 
 function drawLegend(ctx: CanvasRenderingContext2D) {
@@ -680,6 +680,8 @@ function handleResize() {
 watch(
   [
     () => roomStore.dimensions,
+    () => roomStore.audienceStart,
+    () => roomStore.earHeight,
     () => speakerStore.deployment,
     () => speakerStore.selectedSpeaker,
     () => settingsStore.showGrid,
